@@ -1,0 +1,15 @@
+{
+  "domain": "jet2",
+  "name": "Jet2",
+  "codeowners": [
+    "@jampez77"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/jet2",
+  "homekit": {},
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": []
+}
