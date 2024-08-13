@@ -1,5 +1,7 @@
 """Jet2 sensor platform."""
 from datetime import datetime, date
+from homeassistant.util import dt as dt_util
+import time
 import pytz
 from homeassistant.util.dt import DEFAULT_TIME_ZONE
 from homeassistant.core import HomeAssistant
@@ -240,11 +242,13 @@ class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):
             value = str(len(value))
 
         if value and self.entity_description.device_class == SensorDeviceClass.TIMESTAMP:
-            print(value)
+
+            user_timezone = dt_util.get_time_zone(self.hass.config.time_zone)
+
             dt_utc = datetime.strptime(
-                value, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=pytz.utc)
+                value, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=user_timezone)
             # Convert the datetime to the default timezone
-            value = dt_utc.astimezone(DEFAULT_TIME_ZONE)
+            value = dt_utc.astimezone(user_timezone)
         return value
 
     @property
@@ -257,7 +261,6 @@ class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):
                     for attr in attribute:
                         self.attrs[attr] = attribute[attr]
                 else:
-                    print(attribute)
                     self.attrs[attribute] = value[attribute]
 
         return self.attrs

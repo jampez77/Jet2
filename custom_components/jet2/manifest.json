@@ -6,10 +6,11 @@
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://www.home-assistant.io/integrations/jet2",
+  "documentation": "https://github.com/jampez77/Jet2/",
   "homekit": {},
   "iot_class": "cloud_polling",
   "requirements": [],
   "ssdp": [],
+  "version": "2024.8.1",
   "zeroconf": []
 }

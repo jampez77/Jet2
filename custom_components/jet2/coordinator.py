@@ -33,11 +33,7 @@ class Jet2Coordinator(DataUpdateCoordinator):
         self.surname = data[CONF_SURNAME]
 
     async def _async_update_data(self):
-        """Fetch data from API endpoint.
-
-        This is the place to pre-process the data to lookup tables
-        so entities can quickly look up their data.
-        """
+        """Fetch data from API endpoint."""
         try:
             resp = await self.session.request(
                 method="POST",
@@ -47,24 +43,32 @@ class Jet2Coordinator(DataUpdateCoordinator):
                     CONF_DATE_OF_BIRTH: self.date_of_birth,
                     CONF_SURNAME: self.surname,
                 },
+                headers={"Content-Type": CONTENT_TYPE_JSON},
             )
+
+            if resp.status == 401:
+                raise InvalidAuth("Invalid authentication credentials")
+            if resp.status == 429:
+                raise APIRatelimitExceeded("API rate limit exceeded.")
+
             body = await resp.json()
+
+            # Validate response structure
+            if not isinstance(body, dict):
+                raise ValueError("Unexpected response format")
+
+            return body
+
         except InvalidAuth as err:
             raise ConfigEntryAuthFailed from err
         except Jet2Error as err:
             raise UpdateFailed(str(err)) from err
         except ValueError as err:
-            err_str = str(err)
-
-            if "Invalid authentication credentials" in err_str:
-                raise InvalidAuth from err
-            if "API rate limit exceeded." in err_str:
-                raise APIRatelimitExceeded from err
-
-            _LOGGER.exception("Unexpected exception")
+            _LOGGER.exception("Value error occurred: %s", err)
+            raise UpdateFailed(f"Unexpected response: {err}") from err
+        except Exception as err:
+            _LOGGER.exception("Unexpected exception: %s", err)
             raise UnknownError from err
-
-        return body
 
 
 class Jet2Error(HomeAssistantError):
