@@ -1,0 +1,14 @@
+add_booking:
+  fields:
+    bookingReference:
+      required: true
+      selector:
+        text:
+    dateOfbirth:
+      required: true
+      selector:
+        text:
+    surname:
+      required: true
+      selector:
+        text:

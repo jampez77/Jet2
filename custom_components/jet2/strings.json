@@ -7,7 +7,19 @@
           "dateOfbirth": "Date of Birth",
           "surname": "Surname"
         }
-      }
+      },
+      "add_booking": {
+        "data": {
+          "bookingReference": "Booking Reference",
+          "dateOfbirth": "Date of Birth",
+          "surname": "Surname"
+        }
+      },
+      "remove_booking": {
+        "data": {
+            "bookingReference": "Booking Reference"
+        }
+    }
     },
     "error": {
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
@@ -15,7 +27,7 @@
       "unknown": "[%key:common::config_flow::error::unknown%]"
     },
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+      "already_configured": "Integration is already configured"
     }
   }
 }

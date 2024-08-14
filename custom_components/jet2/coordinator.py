@@ -16,7 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 class Jet2Coordinator(DataUpdateCoordinator):
     """Data coordinator."""
 
-    def __init__(self, hass: HomeAssistant, session, data) -> None:
+    def __init__(self, hass: HomeAssistant, session, data: dict) -> None:
         """Initialize coordinator."""
 
         super().__init__(

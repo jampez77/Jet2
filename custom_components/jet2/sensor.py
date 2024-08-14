@@ -161,20 +161,22 @@ async def async_setup_entry(
 ) -> None:
     """Setup sensors from a config entry created in the integrations UI."""
     config = hass.data[DOMAIN][entry.entry_id]
-    # Update our config to include new repos and remove those that have been removed.
+
     if entry.options:
         config.update(entry.options)
 
-    session = async_get_clientsession(hass)
-    coordinator = Jet2Coordinator(hass, session, entry.data)
+    if entry.data:
+        session = async_get_clientsession(hass)
 
-    await coordinator.async_refresh()
+        coordinator = Jet2Coordinator(hass, session, entry.data)
 
-    name = entry.data[CONF_BOOKING_REFERENCE]
+        await coordinator.async_refresh()
 
-    sensors = [Jet2Sensor(coordinator, name, description)
-               for description in SENSOR_TYPES]
-    async_add_entities(sensors, update_before_add=True)
+        name = entry.data[CONF_BOOKING_REFERENCE]
+
+        sensors = [Jet2Sensor(coordinator, name, description)
+                   for description in SENSOR_TYPES]
+        async_add_entities(sensors, update_before_add=True)
 
 
 async def async_setup_platform(

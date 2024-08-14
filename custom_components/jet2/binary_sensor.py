@@ -40,20 +40,23 @@ async def async_setup_entry(
 ) -> None:
     """Setup sensors from a config entry created in the integrations UI."""
     config = hass.data[DOMAIN][entry.entry_id]
-    # Update our config to include new repos and remove those that have been removed.
+
     if entry.options:
         config.update(entry.options)
 
-    session = async_get_clientsession(hass)
-    coordinator = Jet2Coordinator(hass, session, entry.data)
+    if entry.data:
 
-    await coordinator.async_refresh()
+        session = async_get_clientsession(hass)
 
-    name = entry.data[CONF_BOOKING_REFERENCE]
+        coordinator = Jet2Coordinator(hass, session, entry.data)
 
-    sensors = [Jet2BinarySensor(coordinator, name, description)
-               for description in SENSOR_TYPES]
-    async_add_entities(sensors, update_before_add=True)
+        await coordinator.async_refresh()
+
+        name = entry.data[CONF_BOOKING_REFERENCE]
+
+        sensors = [Jet2BinarySensor(coordinator, name, description)
+                   for description in SENSOR_TYPES]
+        async_add_entities(sensors, update_before_add=True)
 
 
 async def async_setup_platform(
@@ -64,6 +67,7 @@ async def async_setup_platform(
 ) -> None:
     """Set up the sensor platform."""
     session = async_get_clientsession(hass)
+
     coordinator = Jet2Coordinator(hass, session, config)
 
     name = config[CONF_BOOKING_REFERENCE]
