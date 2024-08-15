@@ -1,7 +1,8 @@
 {
     "config": {
         "abort": {
-            "already_configured": "Integration is already configured"
+            "already_configured": "Integration is already configured",
+            "booking_removed": "Booking removed"
         },
         "error": {
             "cannot_connect": "Failed to connect",
@@ -14,20 +15,53 @@
                     "bookingReference": "Booking Reference",
                     "dateOfbirth": "Date of Birth",
                     "surname": "Surname"
-                }
+                },
+                "title": "Jet2 - Add a booking"
             },
             "remove_booking": {
                 "data": {
                     "bookingReference": "Booking Reference"
-                }
+                },
+                "title": "Jet2 - Remove a booking"
             },
             "user": {
                 "data": {
                     "bookingReference": "Booking Reference",
                     "dateOfbirth": "Date of Birth",
                     "surname": "Surname"
-                }
+                },
+                "title": "Jet2 - Choose an option"
             }
+        }
+    },
+    "services": {
+        "add_booking": {
+            "description": "Add a Jet2 booking",
+            "fields": {
+                "bookingReference": {
+                    "description": "You'll find your booking reference in your booking confirmation email. e.g. 12345678/X12H",
+                    "name": "Booking Reference"
+                },
+                "dateOfbirth": {
+                    "description": "Lead Passenger Date of Birth DD/MM/YYYY",
+                    "name": "Date of Birth"
+                },
+                "surname": {
+                    "description": "Lead Passenger Surname",
+                    "name": "Surname"
+                }
+            },
+            "name": "Add Booking"
+        },
+        "remove_booking": {
+            "description": "Remove a Jet2 booking",
+            "fields": {
+                "bookingReference": {
+                    "description": "You'll find your booking reference in your booking confirmation email. e.g. 12345678/X12H",
+                    "name": "Booking Reference"
+                }
+            },
+            "name": "Remove Booking"
         }
     }
 }

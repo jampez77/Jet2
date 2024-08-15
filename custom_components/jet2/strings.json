@@ -2,6 +2,7 @@
   "config": {
     "step": {
       "user": {
+        "title": "Jet2 - Choose an option",
         "data": {
           "bookingReference": "Booking Reference",
           "dateOfbirth": "Date of Birth",
@@ -9,6 +10,7 @@
         }
       },
       "add_booking": {
+        "title": "Jet2 - Add a booking",
         "data": {
           "bookingReference": "Booking Reference",
           "dateOfbirth": "Date of Birth",
@@ -16,10 +18,11 @@
         }
       },
       "remove_booking": {
+        "title": "Jet2 - Remove a booking",
         "data": {
             "bookingReference": "Booking Reference"
         }
-    }
+      }
     },
     "error": {
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
@@ -27,7 +30,38 @@
       "unknown": "[%key:common::config_flow::error::unknown%]"
     },
     "abort": {
-      "already_configured": "Integration is already configured"
+      "already_configured": "Integration is already configured",
+      "booking_removed": "Booking removed"
+    }
+  },
+  "services": {
+    "add_booking": {
+      "name": "Add Booking",
+      "description": "Add a Jet2 booking",
+      "fields": {
+        "bookingReference": {
+          "name": "Booking Reference",
+          "description": "You'll find your booking reference in your booking confirmation email. e.g. 12345678/X12H"
+        },
+        "dateOfbirth": {
+          "name": "Date of Birth",
+          "description": "Lead Passenger Date of Birth DD/MM/YYYY"
+        },
+        "surname": {
+          "name": "Surname",
+          "description": "Lead Passenger Surname"
+        }
+      }
+    },
+    "remove_booking": {
+      "name": "Remove Booking",
+      "description": "Remove a Jet2 booking",
+      "fields": {
+        "bookingReference": {
+          "name": "Booking Reference",
+          "description": "You'll find your booking reference in your booking confirmation email. e.g. 12345678/X12H"
+        }
+      }
     }
   }
 }

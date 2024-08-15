@@ -12,3 +12,9 @@ add_booking:
       required: true
       selector:
         text:
+remove_booking:
+  fields:
+    bookingReference:
+      required: true
+      selector:
+        text:
