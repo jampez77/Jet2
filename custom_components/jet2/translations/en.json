@@ -13,8 +13,8 @@
             "add_booking": {
                 "data": {
                     "bookingReference": "Booking Reference",
-                    "dateOfbirth": "Date of Birth",
-                    "surname": "Surname"
+                    "dateOfbirth": "Lead Passenger Date of Birth",
+                    "surname": "Lead Passenger Surname"
                 },
                 "title": "Jet2 - Add a booking"
             },
@@ -27,8 +27,8 @@
             "user": {
                 "data": {
                     "bookingReference": "Booking Reference",
-                    "dateOfbirth": "Date of Birth",
-                    "surname": "Surname"
+                    "dateOfbirth": "Lead Passenger Date of Birth",
+                    "surname": "Lead Passenger Surname"
                 },
                 "title": "Jet2 - Choose an option"
             }
