@@ -39,7 +39,7 @@ Each entry requires a `booking reference`, `date of birth` and `surname`. These 
 
 ---
 ## Data 
-The following attributes can be expose as attributes in HA. It's also worth mentioning that some data won't be returned if it doesn't apply to the specific vehicle.
+The following attributes can be expose as attributes in HA.
 
 - departure
 - region
