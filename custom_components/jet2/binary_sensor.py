@@ -1,6 +1,4 @@
 """Jet2 binary sensor platform."""
-from dataclasses import dataclass
-from datetime import timedelta
 from homeassistant.core import HomeAssistant
 from typing import Any
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
