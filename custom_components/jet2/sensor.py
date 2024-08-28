@@ -148,6 +148,31 @@ SENSOR_TYPES = [
 ]
 
 
+def hasBookingExpired(hass: HomeAssistant, expiry_date_raw: str) -> bool:
+    """ Check if booking has expired """
+
+    user_timezone = dt_util.get_time_zone(hass.config.time_zone)
+
+    dt_utc = datetime.strptime(
+        expiry_date_raw, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=user_timezone)
+    # Convert the datetime to the default timezone
+    expiry_date = dt_utc.astimezone(user_timezone)
+
+    return (expiry_date.timestamp() - datetime.today().timestamp()) <= 3600
+
+
+async def removeBooking(hass: HomeAssistant, booking_reference: str):
+    """ Remove expired booking """
+    entry = next(
+        (entry for entry in hass.config_entries.async_entries(DOMAIN)
+            if entry.data.get(CONF_BOOKING_REFERENCE) == booking_reference),
+        None
+    )
+
+    # Remove the config entry
+    await hass.config_entries.async_remove(entry.entry_id)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -168,9 +193,12 @@ async def async_setup_entry(
 
         name = entry.data[CONF_BOOKING_REFERENCE]
 
-        sensors = [Jet2Sensor(coordinator, name, description)
-                   for description in SENSOR_TYPES]
-        async_add_entities(sensors, update_before_add=True)
+        if hasBookingExpired(hass, coordinator.data.get("data")["expiryDate"]):
+            await removeBooking(hass, name)
+        else:
+            sensors = [Jet2Sensor(coordinator, name, description)
+                       for description in SENSOR_TYPES]
+            async_add_entities(sensors, update_before_add=True)
 
 
 async def async_setup_platform(
@@ -185,9 +213,12 @@ async def async_setup_platform(
 
     name = config[CONF_BOOKING_REFERENCE]
 
-    sensors = [Jet2Sensor(coordinator, name, description)
-               for description in SENSOR_TYPES]
-    async_add_entities(sensors, update_before_add=True)
+    if hasBookingExpired(hass, coordinator.data.get("data")["expiryDate"]):
+        await removeBooking(hass, name)
+    else:
+        sensors = [Jet2Sensor(coordinator, name, description)
+                   for description in SENSOR_TYPES]
+        async_add_entities(sensors, update_before_add=True)
 
 
 class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):

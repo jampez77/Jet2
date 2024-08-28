@@ -23,7 +23,7 @@ from homeassistant.components.sensor import (
 DATE_SENSOR_TYPES = SENSOR_TYPES = [
     SensorEntityDescription(
         key="priceBreakdown",
-        name="Payment Due"
+        name="Payment Due",
     ),
     SensorEntityDescription(
         key="outbound",
@@ -39,8 +39,12 @@ DATE_SENSOR_TYPES = SENSOR_TYPES = [
     ),
     SensorEntityDescription(
         key="holiday",
-        name="Holiday"
+        name="Holiday",
     ),
+    SensorEntityDescription(
+        key="expiryDate",
+        name="Booking Expiration",
+    )
 ]
 
 
@@ -120,6 +124,7 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
         for date_sensor_type in DATE_SENSOR_TYPES:
             event_end_raw = None
             event_name = date_sensor_type.name
+
             if date_sensor_type.key == "priceBreakdown":
 
                 if "paymentDateDue" in self.data.get(date_sensor_type.key):
@@ -185,7 +190,8 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
             if not event_start_raw:
                 continue
 
-            user_timezone = dt_util.get_time_zone(self.hass.config.time_zone)
+            user_timezone = dt_util.get_time_zone(
+                self.hass.config.time_zone)
 
             start_dt_utc = datetime.strptime(
                 event_start_raw, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=user_timezone)

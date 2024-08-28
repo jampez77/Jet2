@@ -52,7 +52,8 @@ Contirbutions are welcome from everyone! By contributing to this project, you he
 
 ---
 ## Data 
-The following attributes can be expose as attributes in HA.
+The integration will add a calendar for every instance that will have any flights and check-in open time, as well as payment due date and the booking expiration date. the booking expiration date is used as a marker for removing entities from HA. once the expiration date is within an hour of the current (HA's) time it will remove all entities for that booking. 
+There is also a camera that will stream accommodation images when they are available. Additionally the following information is also made available to HA:
 
 - departure
 - region
@@ -149,6 +150,7 @@ The following attributes can be expose as attributes in HA.
 - tradeAgentDetails
 - hasResortFlightCheckIn
 - isTradeBooking
+- accommodationImages
 
 ---
 
