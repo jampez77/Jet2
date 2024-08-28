@@ -145,12 +145,6 @@ SENSOR_TYPES = [
         name="Accommodation Extras Summaries",
         icon="mdi:information-box"
     ),
-    SensorEntityDescription(
-        key="expiryDate",
-        name="Expiry Date",
-        icon="mdi:calendar-alert",
-        device_class=SensorDeviceClass.TIMESTAMP
-    ),
 ]
 
 
@@ -258,10 +252,11 @@ class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):
 
         value = self.data.get(self.entity_description.key)
         if isinstance(value, dict) or isinstance(value, list):
-            for attribute in value:
+            for index, attribute in enumerate(value):
                 if isinstance(attribute, list) or isinstance(attribute, dict):
                     for attr in attribute:
-                        self.attrs[attr] = attribute[attr]
+                        self.attrs[str(attr) + str(index)
+                                   ] = attribute[attr]
                 else:
                     self.attrs[attribute] = value[attribute]
 

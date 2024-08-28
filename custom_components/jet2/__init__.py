@@ -8,7 +8,12 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 from .services import async_setup_services, async_cleanup_services
 
-PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.CAMERA]
+PLATFORMS = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.CAMERA,
+    Platform.CALENDAR
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

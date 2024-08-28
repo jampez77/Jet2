@@ -27,7 +27,12 @@ SENSOR_TYPES = [
         key="hasResortFlightCheckIn",
         name="Has Resort Flight Check-in",
         icon="mdi:airplane-check",
-    )
+    ),
+    BinarySensorEntityDescription(
+        key="checkInStatus",
+        name="Check-In Allowed",
+        icon="mdi:airplane-check",
+    ),
 ]
 
 
@@ -107,8 +112,12 @@ class Jet2BinarySensor(CoordinatorEntity[Jet2Coordinator], BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""
-        value: str | bool = self.data.get(
+
+        value: dict | str | bool = self.data.get(
             self.entity_description.key, None)
+
+        if isinstance(value, dict) and self.entity_description.key == "checkInStatus":
+            value = value["checkInAllowed"]
 
         return bool(value)
 
@@ -117,10 +126,11 @@ class Jet2BinarySensor(CoordinatorEntity[Jet2Coordinator], BinarySensorEntity):
 
         value = self.data.get(self.entity_description.key)
         if isinstance(value, dict) or isinstance(value, list):
-            for attribute in value:
+            for index, attribute in enumerate(value):
                 if isinstance(attribute, list) or isinstance(attribute, dict):
                     for attr in attribute:
-                        self.attrs[attr] = attribute[attr]
+                        self.attrs[str(attr) + str(index)
+                                   ] = attribute[attr]
                 else:
                     self.attrs[attribute] = value[attribute]
 
