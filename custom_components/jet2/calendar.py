@@ -121,19 +121,33 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
             event_end_raw = None
             event_name = date_sensor_type.name
             if date_sensor_type.key == "priceBreakdown":
-                event_start_raw = self.data.get(date_sensor_type.key)[
-                    "paymentDateDue"]
-            elif date_sensor_type.key == "checkInStatus":
-                event_start_raw = self.data.get(date_sensor_type.key)[
-                    "checkInDate"]
-            elif date_sensor_type.key == "holiday":
-                flightSummary = self.data.get("flightSummary")
-                hotel = self.data.get("hotel")
-                outbound = flightSummary["outbound"]
-                inbound = flightSummary["inbound"]
 
-                event_start_raw = outbound["localDepartureDateTime"]
-                event_end_raw = inbound["localArrivalDateTime"]
+                if "paymentDateDue" in self.data.get(date_sensor_type.key):
+                    event_start_raw = self.data.get(date_sensor_type.key)[
+                        "paymentDateDue"]
+
+            elif date_sensor_type.key == "checkInStatus":
+
+                if "checkInDate" in self.data.get(date_sensor_type.key):
+                    event_start_raw = self.data.get(date_sensor_type.key)[
+                        "checkInDate"]
+
+            elif date_sensor_type.key == "holiday":
+
+                if "flightSummary" in self.data:
+                    flightSummary = self.data.get("flightSummary")
+
+                    if "outbound" in flightSummary:
+                        outbound = flightSummary["outbound"]
+
+                        if "localDepartureDateTime" in outbound:
+                            event_start_raw = outbound["localDepartureDateTime"]
+
+                    if "inbound" in flightSummary:
+                        inbound = flightSummary["inbound"]
+
+                        if "localArrivalDateTime" in inbound:
+                            event_end_raw = inbound["localArrivalDateTime"]
 
                 if "hotel" in self.data:
                     event_name = self.data["hotel"]["name"]
@@ -145,17 +159,29 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
                     event_name = self.data["region"]
 
             elif date_sensor_type.key == "outbound" or date_sensor_type.key == "inbound":
-                flightSummary = self.data.get("flightSummary")
-                bound = flightSummary[date_sensor_type.key]
-                departureAirport = bound["departureAirport"]
-                arrivalAirport = bound["arrivalAirport"]
-                event_start_raw = bound["localDepartureDateTime"]
-                event_end_raw = bound["localArrivalDateTime"]
 
-                event_name = departureAirport["displayName"] + \
-                    " - " + arrivalAirport["displayName"]
+                if "flightSummary" in self.data:
+                    flightSummary = self.data.get("flightSummary")
+
+                    if date_sensor_type.key in flightSummary:
+                        bound = flightSummary[date_sensor_type.key]
+
+                        if "localDepartureDateTime" in bound:
+                            event_start_raw = bound["localDepartureDateTime"]
+
+                        if "localArrivalDateTime" in bound:
+                            event_end_raw = bound["localArrivalDateTime"]
+
+                        if "departureAirport" in bound and "arrivalAirport" in bound:
+                            departureAirport = bound["departureAirport"]
+                            arrivalAirport = bound["arrivalAirport"]
+
+                            if "displayName" in departureAirport and "displayName" in arrivalAirport:
+                                event_name = departureAirport["displayName"] + \
+                                    " - " + arrivalAirport["displayName"]
             else:
                 event_start_raw = self.data.get(date_sensor_type.key)
+
             if not event_start_raw:
                 continue
 
