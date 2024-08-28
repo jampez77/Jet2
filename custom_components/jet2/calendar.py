@@ -37,6 +37,10 @@ DATE_SENSOR_TYPES = SENSOR_TYPES = [
         key="checkInStatus",
         name="Check-In Date",
     ),
+    SensorEntityDescription(
+        key="holiday",
+        name="Holiday"
+    ),
 ]
 
 
@@ -122,6 +126,24 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
             elif date_sensor_type.key == "checkInStatus":
                 event_start_raw = self.data.get(date_sensor_type.key)[
                     "checkInDate"]
+            elif date_sensor_type.key == "holiday":
+                flightSummary = self.data.get("flightSummary")
+                hotel = self.data.get("hotel")
+                outbound = flightSummary["outbound"]
+                inbound = flightSummary["inbound"]
+
+                event_start_raw = outbound["localDepartureDateTime"]
+                event_end_raw = inbound["localArrivalDateTime"]
+
+                if "hotel" in self.data:
+                    event_name = self.data["hotel"]["name"]
+                elif "resort" in self.data:
+                    event_name = self.data["resort"]
+                elif "area" in self.data:
+                    event_name = self.data["area"]
+                elif "region" in self.data:
+                    event_name = self.data["region"]
+
             elif date_sensor_type.key == "outbound" or date_sensor_type.key == "inbound":
                 flightSummary = self.data.get("flightSummary")
                 bound = flightSummary[date_sensor_type.key]
