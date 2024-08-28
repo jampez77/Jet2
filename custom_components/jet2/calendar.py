@@ -112,8 +112,7 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
     def get_events(self, start_date: datetime) -> list[CalendarEvent]:
         """Return calendar events."""
         events = []
-        print("DATE_SENSOR_TYPES")
-        print(DATE_SENSOR_TYPES)
+
         for date_sensor_type in DATE_SENSOR_TYPES:
             event_end_raw = None
             event_name = date_sensor_type.name
@@ -135,7 +134,6 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
                     " - " + arrivalAirport["displayName"]
             else:
                 event_start_raw = self.data.get(date_sensor_type.key)
-            print(event_start_raw)
             if not event_start_raw:
                 continue
 
