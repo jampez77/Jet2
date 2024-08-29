@@ -131,9 +131,14 @@ SENSOR_TYPES = [
     ),
     SensorEntityDescription(
         key="checkInStatus",
-        name="Check-In Status",
+        name="Check-In Open",
         icon="mdi:airplane-check",
         device_class=SensorDeviceClass.TIMESTAMP
+    ),
+    SensorEntityDescription(
+        key="checkInState",
+        name="Check-In Status",
+        icon="mdi:airplane-check",
     ),
     SensorEntityDescription(
         key="scheduleChangeInfo",
@@ -252,6 +257,23 @@ class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):
     @property
     def native_value(self) -> str | date | None:
         value = self.data.get(self.entity_description.key)
+
+        if self.entity_description.key == "checkInState":
+            value = self.data.get("checkInStatus")
+            if "checkInAllowed" in value:
+                if value["checkInAllowed"]:
+                    _value = "Allowed"
+                    if "outboundFlight" in value:
+                        outboundFlight = value["outboundFlight"]
+                        if outboundFlight is not None and "checkedInCode" in outboundFlight:
+                            _value = outboundFlight["checkedInCode"]
+                    if "inboundFlight" in value:
+                        inboundFlight = value["inboundFlight"]
+                        if inboundFlight is not None and "checkedInCode" in inboundFlight:
+                            _value = inboundFlight["checkedInCode"]
+                else:
+                    _value = "Not Allowed"
+            value = _value
 
         if self.entity_description.key == 'numberOfPassengers':
             passenger_count = 0

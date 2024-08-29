@@ -100,11 +100,11 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{name}")},
             manufacturer='Jet2 - ' + self.data.get("holidayType"),
-            name=name,
+            name=name.upper(),
             configuration_url="https://github.com/jampez77/Jet2/",
         )
         self._attr_unique_id = f"{DOMAIN}-{name}-calendar".lower()
-        self._attr_name = f"{DOMAIN} - {name}".upper()
+        self._attr_name = f"{DOMAIN.title()} - {name.upper()}"
 
     @property
     def available(self) -> bool:
