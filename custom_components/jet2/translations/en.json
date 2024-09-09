@@ -5,32 +5,22 @@
             "booking_removed": "Booking removed"
         },
         "error": {
+            "booking_exists": "This booking already exists",
             "cannot_connect": "Failed to connect",
             "invalid_auth": "Invalid authentication",
+            "invalid_date_format": "Date must be in DD/MM/YYYY format",
+            "no_calendar_selected": "You must select at least one calendar",
             "unknown": "Unexpected error"
         },
         "step": {
-            "add_booking": {
+            "user": {
                 "data": {
                     "bookingReference": "Booking Reference",
+                    "calendars": "Add events to calendar(s)",
                     "dateOfbirth": "Lead Passenger Date of Birth",
                     "surname": "Lead Passenger Surname"
                 },
                 "title": "Jet2 - Add a booking"
-            },
-            "remove_booking": {
-                "data": {
-                    "bookingReference": "Booking Reference"
-                },
-                "title": "Jet2 - Remove a booking"
-            },
-            "user": {
-                "data": {
-                    "bookingReference": "Booking Reference",
-                    "dateOfbirth": "Lead Passenger Date of Birth",
-                    "surname": "Lead Passenger Surname"
-                },
-                "title": "Jet2 - Choose an option"
             }
         }
     },
@@ -41,6 +31,10 @@
                 "bookingReference": {
                     "description": "You'll find your booking reference in your booking confirmation email. e.g. 12345678/X12H",
                     "name": "Booking Reference"
+                },
+                "createCalendar": {
+                    "description": "Create a new calendar specifically for this booking",
+                    "name": "Create Calendar"
                 },
                 "dateOfbirth": {
                     "description": "Lead Passenger Date of Birth DD/MM/YYYY",

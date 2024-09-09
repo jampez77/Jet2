@@ -4,7 +4,7 @@ import asyncio
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from .const import DOMAIN
 from .services import async_setup_services, async_cleanup_services
 
@@ -61,7 +61,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
+async def handle_get_events(call: ServiceCall) -> None:
+    # Your logic to handle the service call
+    pass
+
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Jet2 component from yaml configuration."""
+    hass.services.async_register("calendar", "list_events", handle_get_events)
     hass.data.setdefault(DOMAIN, {})
     return True

@@ -2,31 +2,21 @@
   "config": {
     "step": {
       "user": {
-        "title": "Jet2 - Choose an option",
-        "data": {
-          "bookingReference": "Booking Reference",
-          "dateOfbirth": "Lead Passenger Date of Birth",
-          "surname": "Lead Passenger Surname"
-        }
-      },
-      "add_booking": {
         "title": "Jet2 - Add a booking",
         "data": {
           "bookingReference": "Booking Reference",
+          "calendars": "Add events to calendar(s)",
           "dateOfbirth": "Lead Passenger Date of Birth",
           "surname": "Lead Passenger Surname"
-        }
-      },
-      "remove_booking": {
-        "title": "Jet2 - Remove a booking",
-        "data": {
-            "bookingReference": "Booking Reference"
         }
       }
     },
     "error": {
+      "booking_exists": "This booking already exists",
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
       "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
+      "invalid_date_format": "Date must be in DD/MM/YYYY format",
+      "no_calendar_selected": "You must select at least one calendar",
       "unknown": "[%key:common::config_flow::error::unknown%]"
     },
     "abort": {
@@ -42,6 +32,10 @@
         "bookingReference": {
           "name": "Booking Reference",
           "description": "You'll find your booking reference in your booking confirmation email. e.g. 12345678/X12H"
+        },
+        "createCalendar": {
+          "name": "Create Calendar",
+          "description": "Create a new calendar specifically for this booking"
         },
         "dateOfbirth": {
           "name": "Date of Birth",

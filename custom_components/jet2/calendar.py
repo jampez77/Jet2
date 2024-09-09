@@ -2,7 +2,11 @@
 from datetime import datetime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from .const import DOMAIN, CONF_BOOKING_REFERENCE
+from .const import (
+    DOMAIN,
+    CONF_BOOKING_REFERENCE,
+    CONF_CALENDARS
+)
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -14,11 +18,15 @@ from homeassistant.components.calendar import (
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
 )
+import uuid
+import hashlib
+import json
 from .coordinator import Jet2Coordinator
 from homeassistant.util import dt as dt_util
 from homeassistant.components.sensor import (
     SensorEntityDescription,
 )
+from datetime import timedelta
 
 DATE_SENSOR_TYPES = SENSOR_TYPES = [
     SensorEntityDescription(
@@ -66,8 +74,19 @@ async def async_setup_entry(
 
     name = entry.data[CONF_BOOKING_REFERENCE]
 
+    calendars = entry.data[CONF_CALENDARS]
+
     sensors = [Jet2CalendarSensor(coordinator, name)]
-    async_add_entities(sensors, update_before_add=True)
+
+    for calendar in calendars:
+        if calendar != "None":
+            for sensor in sensors:
+                events = sensor.get_events(datetime.today(), hass)
+                for event in events:
+                    await add_to_calendar(hass, calendar, event, entry)
+
+    if "None" in calendars:
+        async_add_entities(sensors, update_before_add=True)
 
 
 async def async_setup_platform(
@@ -82,8 +101,117 @@ async def async_setup_platform(
 
     name = config[CONF_BOOKING_REFERENCE]
 
+    calendars = config[CONF_CALENDARS]
+
     sensors = [Jet2CalendarSensor(coordinator, name)]
-    async_add_entities(sensors, update_before_add=True)
+
+    for calendar in calendars:
+        if calendar != "None":
+            for sensor in sensors:
+                events = sensor.get_events(datetime.today(), hass)
+                for event in events:
+                    await add_to_calendar(hass, calendar, event, config)
+
+    if "None" in calendars:
+        async_add_entities(sensors, update_before_add=True)
+
+
+async def create_event(hass: HomeAssistant, service_data):
+    await hass.services.async_call(
+        "calendar",
+        "create_event",
+        service_data,
+        blocking=True,
+    )
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+        return super().default(o)
+
+
+def generate_uuid_from_json(json_obj):
+    """Generate a UUID from a JSON object."""
+
+    json_string = json.dumps(json_obj, cls=DateTimeEncoder, sort_keys=True)
+
+    sha1_hash = hashlib.sha1(json_string.encode('utf-8')).digest()
+
+    return str(uuid.UUID(bytes=sha1_hash[:16]))
+
+
+async def get_event_uid(hass: HomeAssistant, service_data) -> str | None:
+    """ Fetch the created event by matching with details in service_data """
+    entity_id = service_data.get("entity_id")
+    start_time = service_data.get("start_date_time")
+    end_time = service_data.get("end_date_time")
+
+    try:
+        events = await hass.services.async_call(
+            "calendar",
+            "list_events",
+            {
+                "entity_id": entity_id,
+                "start_date_time": start_time,
+                "end_date_time": end_time,
+            },
+            return_response=True,
+            blocking=True,
+        )
+    except:
+        events = await hass.services.async_call(
+            "calendar",
+            "list_events",
+            {
+                "entity_id": entity_id,
+                "start_date_time": start_time,
+                "end_date_time": end_time,
+            },
+            blocking=True,
+        )
+
+    if events is not None:
+        for event in events.get("events"):
+            if event["summary"] == service_data["summary"] and event["description"] == service_data["description"] and event["location"] == service_data["location"]:
+                return generate_uuid_from_json(service_data)
+
+    return None
+
+
+async def add_to_calendar(hass: HomeAssistant, calendar: str, event: CalendarEvent, entry: ConfigEntry):
+    """Add an event to the calendar."""
+
+    service_data = {
+        "entity_id": calendar,
+        "start_date_time": event.start,
+        "end_date_time": event.end,
+        "summary": event.summary,
+        "description": f"{event.description}",
+        "location": f"{event.location}"
+    }
+
+    uid = await get_event_uid(hass, service_data)
+
+    if "uids" not in entry.data:
+        uids = []
+    else:
+        uids = entry.data["uids"]
+
+    if uid not in uids:
+
+        await create_event(hass, service_data)
+
+        created_event_uid = await get_event_uid(hass, service_data)
+
+        if created_event_uid not in uids:
+            uids.append(created_event_uid)
+
+        updated_data = entry.data.copy()
+        updated_data["uids"] = uids
+        hass.config_entries.async_update_entry(
+            entry, data=updated_data)
 
 
 class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
@@ -114,10 +242,10 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
     @property
     def event(self) -> CalendarEvent | None:
         """Return the next upcoming event."""
-        events = self.get_events(datetime.today())
+        events = self.get_events(datetime.today(), self.hass)
         return sorted(events, key=lambda c: c.start)[0]
 
-    def get_events(self, start_date: datetime) -> list[CalendarEvent]:
+    def get_events(self, start_date: datetime, hass: HomeAssistant) -> list[CalendarEvent]:
         """Return calendar events."""
         events = []
 
@@ -190,8 +318,7 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
             if not event_start_raw:
                 continue
 
-            user_timezone = dt_util.get_time_zone(
-                self.hass.config.time_zone)
+            user_timezone = dt_util.get_time_zone(hass.config.time_zone)
 
             start_dt_utc = datetime.strptime(
                 event_start_raw, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=user_timezone)
@@ -203,8 +330,12 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
 
             end_dt_utc = datetime.strptime(
                 event_end_raw, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=user_timezone)
+
             # Convert the datetime to the default timezone
             event_end = end_dt_utc.astimezone(user_timezone)
+
+            event_end += timedelta(seconds=1)
+
             if event_start.date() >= start_date.date():
                 events.append(CalendarEvent(
                     event_start, event_end, event_name))
@@ -218,7 +349,7 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
     ) -> list[CalendarEvent]:
         """Return calendar events within a datetime range."""
         events = []
-        for event in self.get_events(start_date):
+        for event in self.get_events(start_date, hass):
             if event.start.date() <= end_date.date():
                 events.append(event)
         return events

@@ -1,5 +1,16 @@
 add_booking:
+  target:
+    entity:
+      domain: calendar
+      supported_features:
+        - calendar.CalendarEntityFeature.CREATE_EVENT
   fields:
+    createCalendar:
+      description: "Create a new calendar"
+      required: true
+      selector:
+        boolean:
+          default: false
     bookingReference:
       required: true
       selector:
