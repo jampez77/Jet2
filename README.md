@@ -1,4 +1,5 @@
-# ![Logo](https://github.com/jampez77/Jet2/blob/main/logo.png "Jet2 Logo") Jet2 bookings for Home Assistant
+# ![Logo](https://github.com/jampez77/Jet2/blob/main/logo.png "Jet2 Logo") 
+Jet2 bookings for Home Assistant
 
 This component provides details of a specified Jet2 booking and adds sensors to [Home Assistant](https://www.home-assistant.io/) which can be used in your own automations.
 
