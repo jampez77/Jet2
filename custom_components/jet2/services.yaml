@@ -24,7 +24,7 @@ add_booking:
         text:
 remove_booking:
   fields:
-    bookingReference:
+    booking_reference:
       required: true
       selector:
         text:
