@@ -8,7 +8,14 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
-from .const import HOST, CONF_BOOKING_REFERENCE, CONF_DATE_OF_BIRTH, CONF_SURNAME
+from .const import (
+    HOST,
+    CONF_BOOKING_REFERENCE,
+    CONF_DATE_OF_BIRTH,
+    CONF_SURNAME,
+    CONF_BOOKINGREFERENCE,
+    CONF_DATEOFBIRTH
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,8 +46,8 @@ class Jet2Coordinator(DataUpdateCoordinator):
                 method="POST",
                 url=HOST,
                 json={
-                    CONF_BOOKING_REFERENCE: self.booking_reference,
-                    CONF_DATE_OF_BIRTH: self.date_of_birth,
+                    CONF_BOOKINGREFERENCE: self.booking_reference,
+                    CONF_DATEOFBIRTH: self.date_of_birth,
                     CONF_SURNAME: self.surname,
                 },
                 headers={"Content-Type": CONTENT_TYPE_JSON},

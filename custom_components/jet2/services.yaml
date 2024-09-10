@@ -5,17 +5,16 @@ add_booking:
       supported_features:
         - calendar.CalendarEntityFeature.CREATE_EVENT
   fields:
-    createCalendar:
+    create_calendar:
       description: "Create a new calendar"
       required: true
       selector:
         boolean:
-          default: false
-    bookingReference:
+    booking_reference:
       required: true
       selector:
         text:
-    dateOfbirth:
+    date_of_birth:
       required: true
       selector:
         text:

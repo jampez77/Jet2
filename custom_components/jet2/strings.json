@@ -4,9 +4,9 @@
       "user": {
         "title": "Jet2 - Add a booking",
         "data": {
-          "bookingReference": "Booking Reference",
+          "booking_reference": "Booking Reference",
           "calendars": "Add events to calendar(s)",
-          "dateOfbirth": "Lead Passenger Date of Birth",
+          "date_of_birth": "Lead Passenger Date of Birth",
           "surname": "Lead Passenger Surname"
         }
       }
@@ -29,15 +29,15 @@
       "name": "Add Booking",
       "description": "Add a Jet2 booking",
       "fields": {
-        "bookingReference": {
+        "booking_reference": {
           "name": "Booking Reference",
           "description": "You'll find your booking reference in your booking confirmation email. e.g. 12345678/X12H"
         },
-        "createCalendar": {
+        "create_calendar": {
           "name": "Create Calendar",
           "description": "Create a new calendar specifically for this booking"
         },
-        "dateOfbirth": {
+        "date_of_birth": {
           "name": "Date of Birth",
           "description": "Lead Passenger Date of Birth DD/MM/YYYY"
         },
@@ -51,7 +51,7 @@
       "name": "Remove Booking",
       "description": "Remove a Jet2 booking",
       "fields": {
-        "bookingReference": {
+        "booking_reference": {
           "name": "Booking Reference",
           "description": "You'll find your booking reference in your booking confirmation email. e.g. 12345678/X12H"
         }
