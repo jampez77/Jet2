@@ -255,6 +255,11 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
         for date_sensor_type in DATE_SENSOR_TYPES:
             event_end_raw = None
             event_name = date_sensor_type.name
+            event_location = event_name
+            event_description = {
+                "source": "Jet2",
+                "reference": self.data["bookingReference"],
+            }
 
             if (
                 date_sensor_type.key == "priceBreakdown"
@@ -275,11 +280,47 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
                     if "outbound" in flightSummary:
                         outbound = flightSummary["outbound"]
 
+                        event_description["outbound"] = {
+                            "flightNumber": outbound["number"],
+                            "duration": outbound["duration"],
+                            "departure": {
+                                "airport": outbound["departureAirport"],
+                                "localDepartureDateTime": outbound[
+                                    "localDepartureDateTime"
+                                ],
+                                "terminal": outbound["departureTerminal"],
+                            },
+                            "arrival": {
+                                "airport": outbound["arrivalAirport"],
+                                "localArrivalDateTime": outbound[
+                                    "localArrivalDateTime"
+                                ],
+                                "terminal": outbound["arrivalTerminal"],
+                            },
+                        }
+
                         if "localDepartureDateTime" in outbound:
                             event_start_raw = outbound["localDepartureDateTime"]
 
                     if "inbound" in flightSummary:
                         inbound = flightSummary["inbound"]
+
+                        event_description["inbound"] = {
+                            "flightNumber": inbound["number"],
+                            "duration": inbound["duration"],
+                            "departure": {
+                                "airport": inbound["departureAirport"],
+                                "localDepartureDateTime": inbound[
+                                    "localDepartureDateTime"
+                                ],
+                                "terminal": inbound["departureTerminal"],
+                            },
+                            "arrival": {
+                                "airport": inbound["arrivalAirport"],
+                                "localArrivalDateTime": inbound["localArrivalDateTime"],
+                                "terminal": inbound["arrivalTerminal"],
+                            },
+                        }
 
                         if "localArrivalDateTime" in inbound:
                             event_end_raw = inbound["localArrivalDateTime"]
@@ -293,32 +334,22 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
                 elif "region" in self.data:
                     event_name = self.data["region"]
 
-            elif date_sensor_type.key in ("inbound", "outbound"):
-                if "flightSummary" in self.data:
-                    flightSummary = self.data.get("flightSummary")
-
-                    if date_sensor_type.key in flightSummary:
-                        bound = flightSummary[date_sensor_type.key]
-
-                        if "localDepartureDateTime" in bound:
-                            event_start_raw = bound["localDepartureDateTime"]
-
-                        if "localArrivalDateTime" in bound:
-                            event_end_raw = bound["localArrivalDateTime"]
-
-                        if "departureAirport" in bound and "arrivalAirport" in bound:
-                            departureAirport = bound["departureAirport"]
-                            arrivalAirport = bound["arrivalAirport"]
-
-                            if (
-                                "displayName" in departureAirport
-                                and "displayName" in arrivalAirport
-                            ):
-                                event_name = (
-                                    departureAirport["displayName"]
-                                    + " - "
-                                    + arrivalAirport["displayName"]
-                                )
+                event_location = event_name
+                if (
+                    "hotel" in self.data
+                    and "resort" in self.data
+                    and "area" in self.data
+                    and "region" in self.data
+                ):
+                    event_location = (
+                        self.data["hotel"]["name"]
+                        + ", "
+                        + self.data["resort"]
+                        + ", "
+                        + self.data["area"]
+                        + ", "
+                        + self.data["region"]
+                    )
             else:
                 event_start_raw = self.data.get(date_sensor_type.key)
 
@@ -346,7 +377,15 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
             event_end += timedelta(seconds=1)
 
             if event_start.date() >= start_date.date():
-                events.append(CalendarEvent(event_start, event_end, event_name))
+                events.append(
+                    CalendarEvent(
+                        event_start,
+                        event_end,
+                        event_name,
+                        event_description,
+                        event_location,
+                    )
+                )
 
         return events
 
