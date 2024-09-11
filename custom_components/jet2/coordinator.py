@@ -1,4 +1,5 @@
 """Jet2 Coordinator."""
+
 from datetime import timedelta
 import logging
 from homeassistant.const import CONTENT_TYPE_JSON
@@ -14,7 +15,7 @@ from .const import (
     CONF_DATE_OF_BIRTH,
     CONF_SURNAME,
     CONF_BOOKINGREFERENCE,
-    CONF_DATEOFBIRTH
+    CONF_DATEOFBIRTH,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,6 +42,17 @@ class Jet2Coordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Fetch data from API endpoint."""
+
+        def handle_status_code(status_code):
+            if status_code == 401:
+                raise InvalidAuth("Invalid authentication credentials")
+            if status_code == 429:
+                raise APIRatelimitExceeded("API rate limit exceeded.")
+
+        def validate_response(body):
+            if not isinstance(body, dict):
+                raise TypeError("Unexpected response format")
+
         try:
             resp = await self.session.request(
                 method="POST",
@@ -53,29 +65,24 @@ class Jet2Coordinator(DataUpdateCoordinator):
                 headers={"Content-Type": CONTENT_TYPE_JSON},
             )
 
-            if resp.status == 401:
-                raise InvalidAuth("Invalid authentication credentials")
-            if resp.status == 429:
-                raise APIRatelimitExceeded("API rate limit exceeded.")
+            handle_status_code(resp.status)
 
             body = await resp.json()
 
-            # Validate response structure
-            if not isinstance(body, dict):
-                raise ValueError("Unexpected response format")
-
-            return body
+            validate_response(body)
 
         except InvalidAuth as err:
             raise ConfigEntryAuthFailed from err
         except Jet2Error as err:
             raise UpdateFailed(str(err)) from err
         except ValueError as err:
-            _LOGGER.exception("Value error occurred: %s", err)
+            _LOGGER.error("Value error occurred: %s", err)
             raise UpdateFailed(f"Unexpected response: {err}") from err
         except Exception as err:
-            _LOGGER.exception("Unexpected exception: %s", err)
+            _LOGGER.error("Unexpected exception: %s", err)
             raise UnknownError from err
+        else:
+            return body
 
 
 class Jet2Error(HomeAssistantError):

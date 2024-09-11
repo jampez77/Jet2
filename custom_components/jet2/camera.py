@@ -26,7 +26,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Setup sensors from a config entry created in the integrations UI."""
+    """Set up sensors from a config entry created in the integrations UI."""
     config = hass.data[DOMAIN][entry.entry_id]
 
     session = async_get_clientsession(hass)
@@ -42,10 +42,11 @@ async def async_setup_entry(
 
 
 async def async_setup_platform(
-        hass: HomeAssistant,
-        config: ConfigType,
-        async_add_entities: AddEntitiesCallback,
-        _: DiscoveryInfoType | None = None,) -> None:
+    hass: HomeAssistant,
+    config: ConfigType,
+    async_add_entities: AddEntitiesCallback,
+    _: DiscoveryInfoType | None = None,
+) -> None:
     """Set up the custom camera platform."""
 
     session = async_get_clientsession(hass)
@@ -70,9 +71,9 @@ class Jet2CameraSensor(CoordinatorEntity[Jet2Coordinator], Camera):
         description: CameraEntityDescription,
     ) -> None:
         """Initialize."""
-        CoordinatorEntity.__init__(self, coordinator)
+        super().__init__(coordinator)
         Camera.__init__(self)  # Initialize the Camera base class
-        self.data = coordinator.data.get('data')
+        self.data = coordinator.data.get("data")
 
         if "hotel" in self.data:
             self._name = self.data["hotel"]["name"]
@@ -96,7 +97,8 @@ class Jet2CameraSensor(CoordinatorEntity[Jet2Coordinator], Camera):
         # Set up device info
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{name}")},
-            manufacturer='Jet2 - ' + self.data.get("holidayType"),
+            manufacturer="Jet2",
+            model=self.data.get("holidayType"),
             name=name.upper(),
             configuration_url="https://github.com/jampez77/Jet2/",
         )
@@ -104,7 +106,7 @@ class Jet2CameraSensor(CoordinatorEntity[Jet2Coordinator], Camera):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return bool(self.coordinator.data.get('success') and len(self._image_urls) > 0)
+        return bool(self.coordinator.data.get("success") and len(self._image_urls) > 0)
 
     @property
     def name(self) -> str:
@@ -116,14 +118,15 @@ class Jet2CameraSensor(CoordinatorEntity[Jet2Coordinator], Camera):
         """Return True if the camera is streaming."""
         return bool(len(self._image_urls) > 0)
 
-    def camera_image(self, width: int = None, height: int = None) -> bytes:
+    def camera_image(self, width: int = 0, height: int = 0) -> bytes:
         """Return the image to serve for the camera entity."""
         if not self._image_urls:
             return None
 
         # Get the current image URL
-        image_url = "https://www.jet2holidays.com" + \
-            self._image_urls[self._current_index]
+        image_url = (
+            "https://www.jet2holidays.com" + self._image_urls[self._current_index]
+        )
 
         # Rotate to the next image
         self._current_index = (self._current_index + 1) % len(self._image_urls)

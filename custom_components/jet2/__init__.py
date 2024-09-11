@@ -1,4 +1,5 @@
 """The Jet2 integration."""
+
 from __future__ import annotations
 import asyncio
 from homeassistant.helpers.typing import ConfigType
@@ -14,7 +15,7 @@ PLATFORMS = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.CAMERA,
-    Platform.CALENDAR
+    Platform.CALENDAR,
 ]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -29,8 +30,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async_setup_services(hass)
 
     # Registers update listener to update config entry when options are updated.
-    unsub_options_update_listener = entry.add_update_listener(
-        options_update_listener)
+    unsub_options_update_listener = entry.add_update_listener(options_update_listener)
     # Store a reference to the unsubscribe function to cleanup if an entry is unloaded.
     hass_data["unsub_options_update_listener"] = unsub_options_update_listener
     hass.data[DOMAIN][entry.entry_id] = hass_data
@@ -48,7 +48,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = all(
         await asyncio.gather(
-            *[hass.config_entries.async_forward_entry_unload(entry, platform) for platform in PLATFORMS]
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in PLATFORMS
+            ]
         )
     )
     # Remove options_update_listener.
@@ -64,13 +67,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-async def handle_get_events(call: ServiceCall) -> None:
-    # Your logic to handle the service call
-    pass
+async def handle_calendar_events(call: ServiceCall) -> None:
+    """Handle calendar events."""
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Jet2 component from yaml configuration."""
-    hass.services.async_register("calendar", "list_events", handle_get_events)
+    hass.services.async_register("calendar", "get_events", handle_calendar_events)
     hass.data.setdefault(DOMAIN, {})
     return True

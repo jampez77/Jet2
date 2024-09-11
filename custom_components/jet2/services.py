@@ -9,7 +9,7 @@ from .const import (
     CONF_ADD_BOOKING,
     CONF_REMOVE_BOOKING,
     CONF_CREATE_CALENDAR,
-    CONF_CALENDARS
+    CONF_CALENDARS,
 )
 from homeassistant.const import CONF_ENTITY_ID
 from homeassistant.config_entries import ConfigEntry
@@ -21,17 +21,21 @@ import functools
 
 
 # Define the schema for your service
-SERVICE_ADD_BOOKING_SCHEMA = vol.Schema({
-    **cv.ENTITY_SERVICE_FIELDS,
-    vol.Required(CONF_CREATE_CALENDAR): cv.boolean,
-    vol.Required(CONF_BOOKING_REFERENCE): cv.string,
-    vol.Required(CONF_DATE_OF_BIRTH): cv.string,
-    vol.Required(CONF_SURNAME): cv.string,
-})
+SERVICE_ADD_BOOKING_SCHEMA = vol.Schema(
+    {
+        **cv.ENTITY_SERVICE_FIELDS,
+        vol.Required(CONF_CREATE_CALENDAR): cv.boolean,
+        vol.Required(CONF_BOOKING_REFERENCE): cv.string,
+        vol.Required(CONF_DATE_OF_BIRTH): cv.string,
+        vol.Required(CONF_SURNAME): cv.string,
+    }
+)
 
-SERVICE_REMOVE_BOOKING_SCHEMA = vol.Schema({
-    vol.Required(CONF_BOOKING_REFERENCE): cv.string,
-})
+SERVICE_REMOVE_BOOKING_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_BOOKING_REFERENCE): cv.string,
+    }
+)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -75,7 +79,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
             CONF_REMOVE_BOOKING,
             functools.partial(remove_booking, hass),
             SERVICE_REMOVE_BOOKING_SCHEMA,
-        )
+        ),
     ]
     for name, method, schema in services:
         if hass.services.has_service(DOMAIN, name):
@@ -84,6 +88,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
 
 
 async def add_booking(hass: HomeAssistant, call: ServiceCall) -> None:
+    """Add a booking."""
     booking_reference = call.data.get(CONF_BOOKING_REFERENCE)
     date_of_birth = call.data.get(CONF_DATE_OF_BIRTH)
     surname = call.data.get(CONF_SURNAME)
@@ -101,7 +106,9 @@ async def add_booking(hass: HomeAssistant, call: ServiceCall) -> None:
             calendar_entities[calendar] = calendar
 
     entries = hass.config_entries.async_entries(DOMAIN)
-    if any(entry.data.get(CONF_BOOKING_REFERENCE) == booking_reference for entry in entries):
+    if any(
+        entry.data.get(CONF_BOOKING_REFERENCE) == booking_reference for entry in entries
+    ):
         return
 
     # Initiate the config flow with the "import" step
@@ -112,14 +119,13 @@ async def add_booking(hass: HomeAssistant, call: ServiceCall) -> None:
             CONF_BOOKING_REFERENCE: booking_reference,
             CONF_DATE_OF_BIRTH: date_of_birth,
             CONF_SURNAME: surname,
-            CONF_CALENDARS: calendar_entities
-        }
+            CONF_CALENDARS: calendar_entities,
+        },
     )
 
     # Notify user
     hass.components.persistent_notification.create(
-        f"Added Jet2 booking {booking_reference}",
-        title="Jet2 Booking Added"
+        f"Added Jet2 booking {booking_reference}", title="Jet2 Booking Added"
     )
 
 
@@ -129,9 +135,12 @@ async def remove_booking(hass: HomeAssistant, call: ServiceCall) -> None:
 
     # Find the config entry corresponding to the booking reference
     entry = next(
-        (entry for entry in hass.config_entries.async_entries(DOMAIN)
-         if entry.data.get(CONF_BOOKING_REFERENCE) == booking_reference),
-        None
+        (
+            entry
+            for entry in hass.config_entries.async_entries(DOMAIN)
+            if entry.data.get(CONF_BOOKING_REFERENCE) == booking_reference
+        ),
+        None,
     )
 
     # Remove the config entry

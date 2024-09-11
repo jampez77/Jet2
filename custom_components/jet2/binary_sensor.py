@@ -1,4 +1,5 @@
 """Jet2 binary sensor platform."""
+
 from homeassistant.core import HomeAssistant
 from typing import Any
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
@@ -41,14 +42,13 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Setup sensors from a config entry created in the integrations UI."""
+    """Set up sensors from a config entry created in the integrations UI."""
     config = hass.data[DOMAIN][entry.entry_id]
 
     if entry.options:
         config.update(entry.options)
 
     if entry.data:
-
         session = async_get_clientsession(hass)
 
         coordinator = Jet2Coordinator(hass, session, entry.data)
@@ -57,8 +57,10 @@ async def async_setup_entry(
 
         name = entry.data[CONF_BOOKING_REFERENCE]
 
-        sensors = [Jet2BinarySensor(coordinator, name, description)
-                   for description in SENSOR_TYPES]
+        sensors = [
+            Jet2BinarySensor(coordinator, name, description)
+            for description in SENSOR_TYPES
+        ]
         async_add_entities(sensors, update_before_add=True)
 
 
@@ -75,8 +77,9 @@ async def async_setup_platform(
 
     name = config[CONF_BOOKING_REFERENCE]
 
-    sensors = [Jet2BinarySensor(coordinator, name, description)
-               for description in SENSOR_TYPES]
+    sensors = [
+        Jet2BinarySensor(coordinator, name, description) for description in SENSOR_TYPES
+    ]
     async_add_entities(sensors, update_before_add=True)
 
 
@@ -91,30 +94,29 @@ class Jet2BinarySensor(CoordinatorEntity[Jet2Coordinator], BinarySensorEntity):
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
-        self.data = coordinator.data.get('data')
+        self.data = coordinator.data.get("data")
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{name}")},
-            manufacturer='Jet2 - ' + self.data.get("holidayType"),
+            manufacturer="Jet2",
+            model=self.data.get("holidayType"),
             name=name.upper(),
             configuration_url="https://github.com/jampez77/Jet2/",
         )
         self._attr_unique_id = f"{DOMAIN}-{name}-{description.key}-binary".lower()
-        self.entity_id = f"binary_sensor.{DOMAIN}_{name}_{description.key}".lower(
-        )
+        self.entity_id = f"binary_sensor.{DOMAIN}_{name}_{description.key}".lower()
         self.attrs: dict[str, Any] = {}
         self.entity_description = description
 
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return bool(self.coordinator.data.get('success'))
+        return bool(self.coordinator.data.get("success"))
 
     @property
     def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""
 
-        value: dict | str | bool = self.data.get(
-            self.entity_description.key, None)
+        value: dict | str | bool = self.data.get(self.entity_description.key, None)
 
         if isinstance(value, dict) and self.entity_description.key == "checkInStatus":
             value = value["checkInAllowed"]
@@ -123,14 +125,13 @@ class Jet2BinarySensor(CoordinatorEntity[Jet2Coordinator], BinarySensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-
+        """Define entity attributes."""
         value = self.data.get(self.entity_description.key)
-        if isinstance(value, dict) or isinstance(value, list):
+        if isinstance(value, (dict, list)):
             for index, attribute in enumerate(value):
-                if isinstance(attribute, list) or isinstance(attribute, dict):
+                if isinstance(attribute, (dict, list)):
                     for attr in attribute:
-                        self.attrs[str(attr) + str(index)
-                                   ] = attribute[attr]
+                        self.attrs[str(attr) + str(index)] = attribute[attr]
                 else:
                     self.attrs[attribute] = value[attribute]
 

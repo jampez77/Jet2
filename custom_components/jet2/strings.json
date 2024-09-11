@@ -6,7 +6,7 @@
         "data": {
           "booking_reference": "Booking Reference",
           "calendars": "Add events to calendar(s)",
-          "date_of_birth": "Lead Passenger Date of Birth",
+          "date_of_birth": "Lead Passenger Date of Birth (DD/MM/YYYY)",
           "surname": "Lead Passenger Surname"
         }
       }

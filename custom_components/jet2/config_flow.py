@@ -1,4 +1,5 @@
 """Config flow for Jet2 integration."""
+
 from __future__ import annotations
 
 import logging
@@ -27,7 +28,7 @@ from .const import (
     CONF_ADD_BOOKING,
     CONF_REMOVE_BOOKING,
     CONF_BOOKING_REMOVED,
-    CONF_CALENDARS
+    CONF_CALENDARS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -59,9 +60,12 @@ async def _get_calendar_entities(hass: HomeAssistant) -> list[str]:
             calendar_entity = hass.states.get(entity_id)
             if calendar_entity:
                 supported_features = calendar_entity.attributes.get(
-                    'supported_features', 0)
+                    "supported_features", 0
+                )
 
-                supports_create_event = supported_features & CalendarEntityFeature.CREATE_EVENT
+                supports_create_event = (
+                    supported_features & CalendarEntityFeature.CREATE_EVENT
+                )
 
                 if supports_create_event:
                     calendar_name = entity.original_name or entity_id
@@ -72,15 +76,18 @@ async def _get_calendar_entities(hass: HomeAssistant) -> list[str]:
 
 
 def is_date_valid_format(value: str) -> bool:
+    """Validate date input."""
     try:
         datetime.strptime(value, "%d/%m/%Y")
-        return True
     except ValueError:
         return False
+    else:
+        return True
 
 
 @callback
 def async_get_options_flow(config_entry):
+    """Jet2 flow handler."""
     return Jet2FlowHandler(config_entry)
 
 
@@ -115,18 +122,30 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         STEP_USER_DATA_SCHEMA = vol.Schema(
             {
-                vol.Required(CONF_BOOKING_REFERENCE, default=user_input.get(CONF_BOOKING_REFERENCE, "")): cv.string,
-                vol.Required(CONF_DATE_OF_BIRTH, default=user_input.get(CONF_DATE_OF_BIRTH, "")): cv.string,
-                vol.Required(CONF_SURNAME, default=user_input.get(CONF_SURNAME, "")): cv.string,
-                vol.Required(CONF_CALENDARS, default=user_input.get(CONF_CALENDARS, [])): cv.multi_select(calendar_entities),
+                vol.Required(
+                    CONF_BOOKING_REFERENCE,
+                    default=user_input.get(CONF_BOOKING_REFERENCE, ""),
+                ): cv.string,
+                vol.Required(
+                    CONF_DATE_OF_BIRTH, default=user_input.get(CONF_DATE_OF_BIRTH, "")
+                ): cv.string,
+                vol.Required(
+                    CONF_SURNAME, default=user_input.get(CONF_SURNAME, "")
+                ): cv.string,
+                vol.Required(
+                    CONF_CALENDARS, default=user_input.get(CONF_CALENDARS, [])
+                ): cv.multi_select(calendar_entities),
             }
         )
 
         if user_input:
-
             entries = self.hass.config_entries.async_entries(DOMAIN)
 
-            if any(entry.data.get(CONF_BOOKING_REFERENCE) == user_input.get(CONF_BOOKING_REFERENCE) for entry in entries):
+            if any(
+                entry.data.get(CONF_BOOKING_REFERENCE)
+                == user_input.get(CONF_BOOKING_REFERENCE)
+                for entry in entries
+            ):
                 errors["base"] = "booking_exists"
 
             if not user_input.get(CONF_CALENDARS):
@@ -166,15 +185,22 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                     title=import_data[CONF_BOOKING_REFERENCE], data=import_data
                 )
             except Exception as e:  # pylint: disable=broad-except
-                _LOGGER.error(f"Failed to import booking: {e}")
+                _LOGGER.error("Failed to import booking: %s", e)
                 return self.async_abort(reason="import_failed")
+
+        # Explicitly handle the case where import_data is None
+        return self.async_abort(reason="no_import_data")
 
 
 class Jet2FlowHandler(config_entries.OptionsFlow):
+    """Jet2 flow handler."""
+
     def __init__(self, config_entry) -> None:
+        """Init."""
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None) -> FlowResult:
+        """Init."""
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({}),
