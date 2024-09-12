@@ -22,20 +22,19 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up platform from a ConfigEntry."""
+
     hass.data.setdefault(DOMAIN, {})
     hass_data = dict(entry.data)
 
-    # Register services when the first config entry is added
     if not hass.data[DOMAIN]:
         async_setup_services(hass)
 
-    # Registers update listener to update config entry when options are updated.
     unsub_options_update_listener = entry.add_update_listener(options_update_listener)
-    # Store a reference to the unsubscribe function to cleanup if an entry is unloaded.
     hass_data["unsub_options_update_listener"] = unsub_options_update_listener
     hass.data[DOMAIN][entry.entry_id] = hass_data
-    # Forward the setup to each platform.
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
     return True
 
 

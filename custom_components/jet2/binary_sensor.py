@@ -2,7 +2,6 @@
 
 from homeassistant.core import HomeAssistant
 from typing import Any
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from .const import DOMAIN, CONF_BOOKING_REFERENCE
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity import DeviceInfo
@@ -62,25 +61,6 @@ async def async_setup_entry(
             for description in SENSOR_TYPES
         ]
         async_add_entities(sensors, update_before_add=True)
-
-
-async def async_setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    _: DiscoveryInfoType | None = None,
-) -> None:
-    """Set up the sensor platform."""
-    session = async_get_clientsession(hass)
-
-    coordinator = Jet2Coordinator(hass, session, config)
-
-    name = config[CONF_BOOKING_REFERENCE]
-
-    sensors = [
-        Jet2BinarySensor(coordinator, name, description) for description in SENSOR_TYPES
-    ]
-    async_add_entities(sensors, update_before_add=True)
 
 
 class Jet2BinarySensor(CoordinatorEntity[Jet2Coordinator], BinarySensorEntity):

@@ -41,26 +41,6 @@ async def async_setup_entry(
     async_add_entities(sensors, update_before_add=True)
 
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    _: DiscoveryInfoType | None = None,
-) -> None:
-    """Set up the custom camera platform."""
-
-    session = async_get_clientsession(hass)
-
-    coordinator = Jet2Coordinator(hass, session, config)
-
-    await coordinator.async_refresh()
-
-    name = config[CONF_BOOKING_REFERENCE]
-
-    sensors = [Jet2CameraSensor(coordinator, name, SENSOR_DESCRIPTION)]
-    async_add_entities(sensors, update_before_add=True)
-
-
 class Jet2CameraSensor(CoordinatorEntity[Jet2Coordinator], Camera):
     """Representation of a Camera entity."""
 

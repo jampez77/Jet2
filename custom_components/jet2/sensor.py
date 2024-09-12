@@ -173,27 +173,6 @@ async def async_setup_entry(
             async_add_entities(sensors, update_before_add=True)
 
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    _: DiscoveryInfoType | None = None,
-) -> None:
-    """Set up the sensor platform."""
-    session = async_get_clientsession(hass)
-    coordinator = Jet2Coordinator(hass, session, config)
-
-    name = config[CONF_BOOKING_REFERENCE]
-
-    if hasBookingExpired(hass, coordinator.data.get("data")["expiryDate"]):
-        await removeBooking(hass, name)
-    else:
-        sensors = [
-            Jet2Sensor(coordinator, name, description) for description in SENSOR_TYPES
-        ]
-        async_add_entities(sensors, update_before_add=True)
-
-
 class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):
     """Define an Jet2 sensor."""
 

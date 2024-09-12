@@ -52,7 +52,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Setup the service (if it hasn't already been set up globally)
     async_setup_services(hass)
 
-    # You may also register entities, update the coordinator, etc.
     await coordinator.async_refresh()
 
     if coordinator.last_exception is not None:

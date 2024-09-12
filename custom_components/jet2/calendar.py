@@ -2,12 +2,11 @@
 
 from datetime import datetime
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from .const import DOMAIN, CONF_BOOKING_REFERENCE, CONF_CALENDARS
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigType
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -57,6 +56,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensors from a config entry created in the integrations UI."""
+
     config = hass.data[DOMAIN][entry.entry_id]
     # Update our config to include new repos and remove those that have been removed.
     if entry.options:
@@ -79,33 +79,6 @@ async def async_setup_entry(
                 events = sensor.get_events(datetime.today(), hass)
                 for event in events:
                     await add_to_calendar(hass, calendar, event, entry)
-
-    if "None" in calendars:
-        async_add_entities(sensors, update_before_add=True)
-
-
-async def async_setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    _: DiscoveryInfoType | None = None,
-) -> None:
-    """Set up the sensor platform."""
-    session = async_get_clientsession(hass)
-    coordinator = Jet2Coordinator(hass, session, config)
-
-    name = config[CONF_BOOKING_REFERENCE]
-
-    calendars = config[CONF_CALENDARS]
-
-    sensors = [Jet2CalendarSensor(coordinator, name)]
-
-    for calendar in calendars:
-        if calendar != "None":
-            for sensor in sensors:
-                events = sensor.get_events(datetime.today(), hass)
-                for event in events:
-                    await add_to_calendar(hass, calendar, event, config)
 
     if "None" in calendars:
         async_add_entities(sensors, update_before_add=True)
@@ -209,6 +182,7 @@ async def add_to_calendar(
         if created_event_uid is not None and created_event_uid not in uids:
             uids.append(created_event_uid)
 
+    if uids != entry.data.get("uids", []):
         updated_data = entry.data.copy()
         updated_data["uids"] = uids
         hass.config_entries.async_update_entry(entry, data=updated_data)
@@ -256,10 +230,7 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
             event_end_raw = None
             event_name = date_sensor_type.name
             event_location = event_name
-            event_description = {
-                "source": "Jet2",
-                "reference": self.data["bookingReference"],
-            }
+            event_description = f"Jet2|{self.data["bookingReference"]}"
 
             if (
                 date_sensor_type.key == "priceBreakdown"
@@ -280,47 +251,11 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
                     if "outbound" in flightSummary:
                         outbound = flightSummary["outbound"]
 
-                        event_description["outbound"] = {
-                            "flightNumber": outbound["number"],
-                            "duration": outbound["duration"],
-                            "departure": {
-                                "airport": outbound["departureAirport"],
-                                "localDepartureDateTime": outbound[
-                                    "localDepartureDateTime"
-                                ],
-                                "terminal": outbound["departureTerminal"],
-                            },
-                            "arrival": {
-                                "airport": outbound["arrivalAirport"],
-                                "localArrivalDateTime": outbound[
-                                    "localArrivalDateTime"
-                                ],
-                                "terminal": outbound["arrivalTerminal"],
-                            },
-                        }
-
                         if "localDepartureDateTime" in outbound:
                             event_start_raw = outbound["localDepartureDateTime"]
 
                     if "inbound" in flightSummary:
                         inbound = flightSummary["inbound"]
-
-                        event_description["inbound"] = {
-                            "flightNumber": inbound["number"],
-                            "duration": inbound["duration"],
-                            "departure": {
-                                "airport": inbound["departureAirport"],
-                                "localDepartureDateTime": inbound[
-                                    "localDepartureDateTime"
-                                ],
-                                "terminal": inbound["departureTerminal"],
-                            },
-                            "arrival": {
-                                "airport": inbound["arrivalAirport"],
-                                "localArrivalDateTime": inbound["localArrivalDateTime"],
-                                "terminal": inbound["arrivalTerminal"],
-                            },
-                        }
 
                         if "localArrivalDateTime" in inbound:
                             event_end_raw = inbound["localArrivalDateTime"]
