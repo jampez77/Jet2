@@ -194,11 +194,11 @@ class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):
         self.name = name
         self._state = None
 
-    async def update_from_coordinator(self):
+    def update_from_coordinator(self):
         """Update sensor state and attributes from coordinator data."""
 
         if hasBookingExpired(self.hass, self.data.get("expiryDate")):
-            await removeBooking(self.hass, self.name)
+            self.hass.async_add_job(removeBooking(self.hass, self.name))
         else:
             value = self.data.get(self.entity_description.key)
 
