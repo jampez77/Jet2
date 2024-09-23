@@ -2,34 +2,33 @@
 
 from __future__ import annotations
 
-import logging
-from typing import Any, Dict
 from datetime import datetime
+import logging
+from typing import Any
+
 import voluptuous as vol
-from homeassistant.components.calendar import CalendarEntityFeature
+
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
+from homeassistant.components.calendar import CalendarEntityFeature
+from homeassistant.config_entries import ConfigFlow
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
-import homeassistant.helpers.config_validation as cv
-from .coordinator import Jet2Coordinator
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.entity_registry import async_get
-from homeassistant.core import callback
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
+import homeassistant.helpers.config_validation as cv
+
 from .const import (
-    DOMAIN,
+    ADD_BOOKING,
+    BOOKING_OPTION,
     CONF_BOOKING_REFERENCE,
+    CONF_CALENDARS,
     CONF_DATE_OF_BIRTH,
     CONF_SURNAME,
-    BOOKING_OPTION,
-    ADD_BOOKING,
+    DOMAIN,
     REMOVE_BOOKING,
-    CONF_ADD_BOOKING,
-    CONF_REMOVE_BOOKING,
-    CONF_BOOKING_REMOVED,
-    CONF_CALENDARS,
 )
+from .coordinator import Jet2Coordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,7 +52,7 @@ STEP_REMOVE_BOOKING_SCHEMA = vol.Schema(
 
 async def _get_calendar_entities(hass: HomeAssistant) -> list[str]:
     """Retrieve calendar entities."""
-    entity_registry = async_get(hass)
+    entity_registry = er.async_get(hass)
     calendar_entities = {}
     for entity_id, entity in entity_registry.entities.items():
         if entity_id.startswith("calendar."):

@@ -1,26 +1,23 @@
 """Jet2 sensor platform."""
 
-from datetime import datetime
-from homeassistant.core import HomeAssistant
-from .const import DOMAIN, CONF_BOOKING_REFERENCE, CONF_CALENDARS
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.config_entries import ConfigEntry, ConfigType
-from homeassistant.components.calendar import CalendarEntity, CalendarEvent
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-)
-from homeassistant.exceptions import ServiceValidationError, HomeAssistantError
-import uuid
+from datetime import datetime, timedelta
 import hashlib
 import json
-from .coordinator import Jet2Coordinator
+import uuid
+
+from homeassistant.components.calendar import CalendarEntity, CalendarEvent
+from homeassistant.components.sensor import SensorEntityDescription
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
-from homeassistant.components.sensor import (
-    SensorEntityDescription,
-)
-from datetime import timedelta
+
+from .const import CONF_BOOKING_REFERENCE, CONF_CALENDARS, DOMAIN
+from .coordinator import Jet2Coordinator
 
 DATE_SENSOR_TYPES = [
     SensorEntityDescription(

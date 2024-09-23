@@ -1,21 +1,20 @@
 """Jet2 binary sensor platform."""
 
-from homeassistant.core import HomeAssistant
 from typing import Any
-from .const import DOMAIN, CONF_BOOKING_REFERENCE
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.config_entries import ConfigEntry
+
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-)
-from .coordinator import Jet2Coordinator
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .const import CONF_BOOKING_REFERENCE, DOMAIN
+from .coordinator import Jet2Coordinator
 
 SENSOR_TYPES = [
     BinarySensorEntityDescription(
@@ -86,6 +85,41 @@ class Jet2BinarySensor(CoordinatorEntity[Jet2Coordinator], BinarySensorEntity):
         self.entity_id = f"binary_sensor.{DOMAIN}_{name}_{description.key}".lower()
         self.attrs: dict[str, Any] = {}
         self.entity_description = description
+        self._state = None
+
+    def update_from_coordinator(self):
+        """Update sensor state and attributes from coordinator data."""
+        value: dict | str | bool = self.data.get(self.entity_description.key, None)
+
+        if isinstance(value, dict) and self.entity_description.key == "checkInStatus":
+            value = value["checkInAllowed"]
+
+        self._state = bool(value)
+
+        if isinstance(value, (dict, list)):
+            for index, attribute in enumerate(value):
+                if isinstance(attribute, (dict, list)):
+                    for attr in attribute:
+                        self.attrs[str(attr) + str(index)] = attribute[attr]
+                else:
+                    self.attrs[attribute] = value[attribute]
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self.update_from_coordinator()
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Handle adding to Home Assistant."""
+        await super().async_added_to_hass()
+        await self.async_update()
+
+    async def async_remove(self) -> None:
+        """Handle the removal of the entity."""
+        # If you have any specific cleanup logic, add it here
+        if self.hass is not None:
+            await super().async_remove()
 
     @property
     def available(self) -> bool:
@@ -95,24 +129,9 @@ class Jet2BinarySensor(CoordinatorEntity[Jet2Coordinator], BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""
-
-        value: dict | str | bool = self.data.get(self.entity_description.key, None)
-
-        if isinstance(value, dict) and self.entity_description.key == "checkInStatus":
-            value = value["checkInAllowed"]
-
-        return bool(value)
+        return self._state
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Define entity attributes."""
-        value = self.data.get(self.entity_description.key)
-        if isinstance(value, (dict, list)):
-            for index, attribute in enumerate(value):
-                if isinstance(attribute, (dict, list)):
-                    for attr in attribute:
-                        self.attrs[str(attr) + str(index)] = attribute[attr]
-                else:
-                    self.attrs[attribute] = value[attribute]
-
         return self.attrs

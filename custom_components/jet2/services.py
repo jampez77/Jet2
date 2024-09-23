@@ -1,24 +1,27 @@
-from homeassistant.core import HomeAssistant, ServiceCall
-import voluptuous as vol
-from homeassistant.helpers import config_validation as cv
-from .const import (
-    DOMAIN,
-    CONF_BOOKING_REFERENCE,
-    CONF_DATE_OF_BIRTH,
-    CONF_SURNAME,
-    CONF_ADD_BOOKING,
-    CONF_REMOVE_BOOKING,
-    CONF_CREATE_CALENDAR,
-    CONF_CALENDARS,
-)
-from homeassistant.const import CONF_ENTITY_ID
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.device_registry import async_get as async_get_device_registry
-from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
-from .coordinator import Jet2Coordinator
+"""Services for Jet2 Integrartion."""
+
 import functools
 
+import voluptuous as vol
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_ENTITY_ID
+from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+from .const import (
+    CONF_ADD_BOOKING,
+    CONF_BOOKING_REFERENCE,
+    CONF_CALENDARS,
+    CONF_CREATE_CALENDAR,
+    CONF_DATE_OF_BIRTH,
+    CONF_REMOVE_BOOKING,
+    CONF_SURNAME,
+    DOMAIN,
+)
+from .coordinator import Jet2Coordinator
 
 # Define the schema for your service
 SERVICE_ADD_BOOKING_SCHEMA = vol.Schema(
@@ -108,7 +111,7 @@ async def add_booking(hass: HomeAssistant, call: ServiceCall) -> None:
     if any(
         entry.data.get(CONF_BOOKING_REFERENCE) == booking_reference for entry in entries
     ):
-        return
+        raise HomeAssistantError(f"Jet2 booking {booking_reference} already exists.")
 
     # Initiate the config flow with the "import" step
     await hass.config_entries.flow.async_init(

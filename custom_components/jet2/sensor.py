@@ -1,27 +1,22 @@
 """Jet2 sensor platform."""
 
-from datetime import datetime, date
-from homeassistant.util import dt as dt_util
-import time
-import pytz
-from homeassistant.util.dt import DEFAULT_TIME_ZONE
-from homeassistant.core import HomeAssistant
+from datetime import date, datetime
 from typing import Any
-from homeassistant.const import UnitOfMass
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from .const import DOMAIN, CONF_BOOKING_REFERENCE
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.config_entries import ConfigEntry
+
 from homeassistant.components.sensor import (
+    SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
-    SensorDeviceClass,
 )
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
+
+from .const import CONF_BOOKING_REFERENCE, DOMAIN
 from .coordinator import Jet2Coordinator
 
 SENSOR_TYPES = [
@@ -196,6 +191,93 @@ class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):
         self.entity_id = f"sensor.{DOMAIN}_{name}_{description.key}".lower()
         self.attrs: dict[str, Any] = {}
         self.entity_description = description
+        self.name = name
+        self._state = None
+
+    async def update_from_coordinator(self):
+        """Update sensor state and attributes from coordinator data."""
+
+        if hasBookingExpired(self.hass, self.data.get("expiryDate")):
+            await removeBooking(self.hass, self.name)
+        else:
+            value = self.data.get(self.entity_description.key)
+
+            if isinstance(value, (dict, list)):
+                for index, attribute in enumerate(value):
+                    if isinstance(attribute, (dict, list)):
+                        for attr in attribute:
+                            self.attrs[str(attr) + str(index)] = attribute[attr]
+                    else:
+                        self.attrs[attribute] = value[attribute]
+
+            if self.entity_description.key == "checkInState":
+                value = self.data.get("checkInStatus")
+                if "checkInAllowed" in value:
+                    if value["checkInAllowed"]:
+                        _value = "Allowed"
+                        if "outboundFlight" in value:
+                            outboundFlight = value["outboundFlight"]
+                            if (
+                                outboundFlight is not None
+                                and "checkedInCode" in outboundFlight
+                            ):
+                                _value = outboundFlight["checkedInCode"]
+                        if "inboundFlight" in value:
+                            inboundFlight = value["inboundFlight"]
+                            if (
+                                inboundFlight is not None
+                                and "checkedInCode" in inboundFlight
+                            ):
+                                _value = inboundFlight["checkedInCode"]
+                    else:
+                        _value = "Not Allowed"
+                value = _value
+
+            if self.entity_description.key == "numberOfPassengers":
+                passenger_count = 0
+                for key in value:
+                    passenger_count += value[key]
+                value = passenger_count
+
+            if isinstance(value, dict):
+                if self.entity_description.key == "flightSummary":
+                    value = value.get("outbound").get("number")
+                else:
+                    value = next(iter(value.values()))
+
+            if isinstance(value, list):
+                value = str(len(value))
+
+            if (
+                value
+                and self.entity_description.device_class == SensorDeviceClass.TIMESTAMP
+            ):
+                user_timezone = dt_util.get_time_zone(self.hass.config.time_zone)
+
+                dt_utc = datetime.strptime(value, "%Y-%m-%dT%H:%M:%S").replace(
+                    tzinfo=user_timezone
+                )
+                # Convert the datetime to the default timezone
+                value = dt_utc.astimezone(user_timezone)
+
+            self._state = value
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self.update_from_coordinator()
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Handle adding to Home Assistant."""
+        await super().async_added_to_hass()
+        await self.async_update()
+
+    async def async_remove(self) -> None:
+        """Handle the removal of the entity."""
+        # If you have any specific cleanup logic, add it here
+        if self.hass is not None:
+            await super().async_remove()
 
     @property
     def available(self) -> bool:
@@ -205,69 +287,9 @@ class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):
     @property
     def native_value(self) -> str | date | None:
         """Native value."""
-        value = self.data.get(self.entity_description.key)
-
-        if self.entity_description.key == "checkInState":
-            value = self.data.get("checkInStatus")
-            if "checkInAllowed" in value:
-                if value["checkInAllowed"]:
-                    _value = "Allowed"
-                    if "outboundFlight" in value:
-                        outboundFlight = value["outboundFlight"]
-                        if (
-                            outboundFlight is not None
-                            and "checkedInCode" in outboundFlight
-                        ):
-                            _value = outboundFlight["checkedInCode"]
-                    if "inboundFlight" in value:
-                        inboundFlight = value["inboundFlight"]
-                        if (
-                            inboundFlight is not None
-                            and "checkedInCode" in inboundFlight
-                        ):
-                            _value = inboundFlight["checkedInCode"]
-                else:
-                    _value = "Not Allowed"
-            value = _value
-
-        if self.entity_description.key == "numberOfPassengers":
-            passenger_count = 0
-            for key in value:
-                passenger_count += value[key]
-            value = passenger_count
-
-        if isinstance(value, dict):
-            if self.entity_description.key == "flightSummary":
-                value = value.get("outbound").get("number")
-            else:
-                value = next(iter(value.values()))
-
-        if isinstance(value, list):
-            value = str(len(value))
-
-        if (
-            value
-            and self.entity_description.device_class == SensorDeviceClass.TIMESTAMP
-        ):
-            user_timezone = dt_util.get_time_zone(self.hass.config.time_zone)
-
-            dt_utc = datetime.strptime(value, "%Y-%m-%dT%H:%M:%S").replace(
-                tzinfo=user_timezone
-            )
-            # Convert the datetime to the default timezone
-            value = dt_utc.astimezone(user_timezone)
-        return value
+        return self._state
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Define entity attributes."""
-        value = self.data.get(self.entity_description.key)
-        if isinstance(value, (dict, list)):
-            for index, attribute in enumerate(value):
-                if isinstance(attribute, (dict, list)):
-                    for attr in attribute:
-                        self.attrs[str(attr) + str(index)] = attribute[attr]
-                else:
-                    self.attrs[attribute] = value[attribute]
-
         return self.attrs

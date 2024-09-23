@@ -2,20 +2,19 @@
 
 from datetime import timedelta
 import logging
+
 from homeassistant.const import CONTENT_TYPE_JSON
-from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
 from .const import (
-    HOST,
     CONF_BOOKING_REFERENCE,
-    CONF_DATE_OF_BIRTH,
-    CONF_SURNAME,
     CONF_BOOKINGREFERENCE,
+    CONF_DATE_OF_BIRTH,
     CONF_DATEOFBIRTH,
+    CONF_SURNAME,
+    HOST,
 )
 
 _LOGGER = logging.getLogger(__name__)

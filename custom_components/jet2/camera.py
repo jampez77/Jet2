@@ -1,18 +1,17 @@
+"""Camera sensor for Jet2."""
+
 import requests
-from homeassistant.components.camera import Camera
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.components.camera import CameraEntityDescription
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.entity import DeviceInfo
+
+from homeassistant.components.camera import Camera, CameraEntityDescription
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from typing import Any
 from homeassistant.core import HomeAssistant
-from .const import DOMAIN, CONF_BOOKING_REFERENCE
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import CONF_BOOKING_REFERENCE, DOMAIN
 from .coordinator import Jet2Coordinator
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-)
 
 SENSOR_DESCRIPTION = CameraEntityDescription(
     key="accommodationImages",
