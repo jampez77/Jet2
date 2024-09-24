@@ -85,7 +85,7 @@ class Jet2BinarySensor(CoordinatorEntity[Jet2Coordinator], BinarySensorEntity):
         self.entity_id = f"binary_sensor.{DOMAIN}_{name}_{description.key}".lower()
         self.attrs: dict[str, Any] = {}
         self.entity_description = description
-        self._state = None
+        self._attr_is_on = None
 
     def update_from_coordinator(self):
         """Update sensor state and attributes from coordinator data."""
@@ -94,7 +94,7 @@ class Jet2BinarySensor(CoordinatorEntity[Jet2Coordinator], BinarySensorEntity):
         if isinstance(value, dict) and self.entity_description.key == "checkInStatus":
             value = value["checkInAllowed"]
 
-        self._state = bool(value)
+        self._attr_is_on = bool(value)
 
         if isinstance(value, (dict, list)):
             for index, attribute in enumerate(value):
@@ -129,7 +129,7 @@ class Jet2BinarySensor(CoordinatorEntity[Jet2Coordinator], BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""
-        return self._state
+        return self._attr_is_on
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
