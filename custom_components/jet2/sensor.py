@@ -191,7 +191,7 @@ class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):
         self.entity_id = f"sensor.{DOMAIN}_{name}_{description.key}".lower()
         self.attrs: dict[str, Any] = {}
         self.entity_description = description
-        self.name = name
+        self.name = self.entity_description.name
         self._state = None
 
     def update_from_coordinator(self):
