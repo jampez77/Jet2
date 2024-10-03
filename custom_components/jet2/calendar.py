@@ -40,10 +40,6 @@ DATE_SENSOR_TYPES = [
         key="holiday",
         name="Holiday",
     ),
-    SensorEntityDescription(
-        key="expiryDate",
-        name="Booking Expiration",
-    ),
 ]
 
 
@@ -64,21 +60,24 @@ async def async_setup_entry(
 
     await coordinator.async_refresh()
 
-    name = entry.data[CONF_BOOKING_REFERENCE]
+    success = bool(coordinator.data.get("success"))
 
-    calendars = entry.data[CONF_CALENDARS]
+    if success:
+        name = entry.data[CONF_BOOKING_REFERENCE]
 
-    sensors = [Jet2CalendarSensor(coordinator, name)]
+        calendars = entry.data[CONF_CALENDARS]
 
-    for calendar in calendars:
-        if calendar != "None":
-            for sensor in sensors:
-                events = sensor.get_events(datetime.today(), hass)
-                for event in events:
-                    await add_to_calendar(hass, calendar, event, entry)
+        sensors = [Jet2CalendarSensor(coordinator, name)]
 
-    if "None" in calendars:
-        async_add_entities(sensors, update_before_add=True)
+        for calendar in calendars:
+            if calendar != "None":
+                for sensor in sensors:
+                    events = sensor.get_events(datetime.today(), hass)
+                    for event in events:
+                        await add_to_calendar(hass, calendar, event, entry)
+
+        if "None" in calendars:
+            async_add_entities(sensors, update_before_add=True)
 
 
 async def create_event(hass: HomeAssistant, service_data):
@@ -195,27 +194,33 @@ class Jet2CalendarSensor(CoordinatorEntity[Jet2Coordinator], CalendarEntity):
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
-        self.data = coordinator.data.get("data")
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{name}")},
-            manufacturer="Jet2",
-            model=self.data.get("holidayType"),
-            name=name.upper(),
-            configuration_url="https://github.com/jampez77/Jet2/",
-        )
-        self._attr_unique_id = f"{DOMAIN}-{name}-calendar".lower()
-        self._attr_name = f"{DOMAIN.title()} - {name.upper()}"
+
+        self.success = bool(coordinator.data.get("success"))
+
+        if self.success:
+            self.data = coordinator.data.get("data")
+            self._attr_device_info = DeviceInfo(
+                identifiers={(DOMAIN, f"{name}")},
+                manufacturer="Jet2",
+                model=self.data.get("holidayType"),
+                name=name.upper(),
+                configuration_url="https://github.com/jampez77/Jet2/",
+            )
+            self._attr_unique_id = f"{DOMAIN}-{name}-calendar".lower()
+            self._attr_name = f"{DOMAIN.title()} - {name.upper()}"
 
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return bool(self.coordinator.data.get("success"))
+        return self.success
 
     @property
     def event(self) -> CalendarEvent | None:
         """Return the next upcoming event."""
-        events = self.get_events(datetime.today(), self.hass)
-        return sorted(events, key=lambda c: c.start)[0]
+        if self.success:
+            events = self.get_events(datetime.today(), self.hass)
+            return sorted(events, key=lambda c: c.start)[0]
+        return None
 
     def get_events(
         self, start_date: datetime, hass: HomeAssistant

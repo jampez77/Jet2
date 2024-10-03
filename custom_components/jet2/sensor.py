@@ -125,6 +125,7 @@ def hasBookingExpired(hass: HomeAssistant, expiry_date_raw: str) -> bool:
 
 async def removeBooking(hass: HomeAssistant, booking_reference: str):
     """Remove expired booking."""
+
     entry = next(
         (
             entry
@@ -156,16 +157,21 @@ async def async_setup_entry(
 
         await coordinator.async_refresh()
 
+        success = bool(coordinator.data.get("success"))
         name = entry.data[CONF_BOOKING_REFERENCE]
 
-        if hasBookingExpired(hass, coordinator.data.get("data")["expiryDate"]):
-            await removeBooking(hass, name)
+        if success:
+            if hasBookingExpired(hass, coordinator.data.get("data")["expiryDate"]):
+                await removeBooking(hass, name)
+            else:
+                sensors = [
+                    Jet2Sensor(coordinator, name, description)
+                    for description in SENSOR_TYPES
+                    if description.key in coordinator.data
+                ]
+                async_add_entities(sensors, update_before_add=True)
         else:
-            sensors = [
-                Jet2Sensor(coordinator, name, description)
-                for description in SENSOR_TYPES
-            ]
-            async_add_entities(sensors, update_before_add=True)
+            await removeBooking(hass, name)
 
 
 class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):
@@ -179,6 +185,7 @@ class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
+        self.success = bool(coordinator.data.get("success"))
         self.data = coordinator.data.get("data")
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{name}")},
@@ -197,7 +204,7 @@ class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):
     def update_from_coordinator(self):
         """Update sensor state and attributes from coordinator data."""
 
-        if hasBookingExpired(self.hass, self.data.get("expiryDate")):
+        if not self.success:
             self.hass.async_add_job(removeBooking(self.hass, self.name))
         else:
             value = self.data.get(self.entity_description.key)
@@ -282,7 +289,7 @@ class Jet2Sensor(CoordinatorEntity[Jet2Coordinator], SensorEntity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return bool(self.coordinator.data.get("success"))
+        return self.success
 
     @property
     def native_value(self) -> str | date | None:

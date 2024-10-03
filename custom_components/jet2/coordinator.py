@@ -32,7 +32,7 @@ class Jet2Coordinator(DataUpdateCoordinator):
             # Name of the data. For logging purposes.
             name="Jet2",
             # Polling interval. Will only be polled if there are subscribers.
-            update_interval=timedelta(seconds=300),
+            update_interval=timedelta(minutes=5),
         )
         self.session = session
         self.booking_reference = data[CONF_BOOKING_REFERENCE]

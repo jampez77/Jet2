@@ -52,40 +52,44 @@ class Jet2CameraSensor(CoordinatorEntity[Jet2Coordinator], Camera):
         """Initialize."""
         super().__init__(coordinator)
         Camera.__init__(self)  # Initialize the Camera base class
-        self.data = coordinator.data.get("data")
 
-        if "hotel" in self.data:
-            self._name = self.data["hotel"]["name"]
-        elif "resort" in self.data:
-            self._name = self.data["resort"]
-        elif "area" in self.data:
-            self._name = self.data["area"]
-        elif "region" in self.data:
-            self._name = self.data["region"]
-        else:
-            self._name = "Accommodation Images"
+        self.success = bool(coordinator.data.get("success"))
+        self._name = "Accommodation Images"
+        self._image_urls = None
 
-        self.entity_description = description
-        self._current_index = 0
-        self._image_urls = self.data["accommodationImages"]
+        if self.success:
+            self.data = coordinator.data.get("data")
 
-        # Setup unique ID and entity ID
-        self._attr_unique_id = f"{DOMAIN}-{name}-{description.key}-camera".lower()
-        self.entity_id = f"camera.{DOMAIN}_{name}_{description.key}".lower()
+            if "hotel" in self.data:
+                self._name = self.data["hotel"]["name"]
+            elif "resort" in self.data:
+                self._name = self.data["resort"]
+            elif "area" in self.data:
+                self._name = self.data["area"]
+            elif "region" in self.data:
+                self._name = self.data["region"]
 
-        # Set up device info
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{name}")},
-            manufacturer="Jet2",
-            model=self.data.get("holidayType"),
-            name=name.upper(),
-            configuration_url="https://github.com/jampez77/Jet2/",
-        )
+            self.entity_description = description
+            self._current_index = 0
+            self._image_urls = self.data["accommodationImages"]
+
+            # Setup unique ID and entity ID
+            self._attr_unique_id = f"{DOMAIN}-{name}-{description.key}-camera".lower()
+            self.entity_id = f"camera.{DOMAIN}_{name}_{description.key}".lower()
+
+            # Set up device info
+            self._attr_device_info = DeviceInfo(
+                identifiers={(DOMAIN, f"{name}")},
+                manufacturer="Jet2",
+                model=self.data.get("holidayType"),
+                name=name.upper(),
+                configuration_url="https://github.com/jampez77/Jet2/",
+            )
 
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return bool(self.coordinator.data.get("success") and len(self._image_urls) > 0)
+        return bool(self.success and len(self._image_urls) > 0)
 
     @property
     def name(self) -> str:
@@ -95,11 +99,11 @@ class Jet2CameraSensor(CoordinatorEntity[Jet2Coordinator], Camera):
     @property
     def is_streaming(self) -> bool:
         """Return True if the camera is streaming."""
-        return bool(len(self._image_urls) > 0)
+        return bool(self.success and len(self._image_urls) > 0)
 
     def camera_image(self, width: int = 0, height: int = 0) -> bytes:
         """Return the image to serve for the camera entity."""
-        if not self._image_urls:
+        if not self.success or self._image_urls is None:
             return None
 
         # Get the current image URL
