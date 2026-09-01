@@ -1,22 +1,20 @@
-"""Jet2 binary sensor platform."""
+"""Binary sensor platform for the Jet2 integration."""
 
-from typing import Any
+from typing import Any, override
 
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_BOOKING_REFERENCE, DOMAIN
-from .coordinator import Jet2Coordinator
+from .coordinator import Jet2ConfigEntry, Jet2Coordinator
 
-SENSOR_TYPES = [
+SENSOR_TYPES = (
     BinarySensorEntityDescription(
         key="isTradeBooking",
         name="Is Trade Booking",
@@ -32,114 +30,68 @@ SENSOR_TYPES = [
         name="Check-In Allowed",
         icon="mdi:airplane-check",
     ),
-]
+)
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    entry: Jet2ConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up sensors from a config entry created in the integrations UI."""
-    config = hass.data[DOMAIN][entry.entry_id]
-
-    if entry.options:
-        config.update(entry.options)
-
-    if entry.data:
-        session = async_get_clientsession(hass)
-
-        coordinator = Jet2Coordinator(hass, session, entry.data)
-
-        await coordinator.async_refresh()
-
-        name = entry.data[CONF_BOOKING_REFERENCE]
-
-        sensors = [
-            Jet2BinarySensor(coordinator, name, description)
-            for description in SENSOR_TYPES
-            if description.key in coordinator.data
-        ]
-        async_add_entities(sensors, update_before_add=True)
+    """Set up Jet2 binary sensors."""
+    coordinator = entry.runtime_data
+    booking = coordinator.data["data"]
+    async_add_entities(
+        Jet2BinarySensor(
+            coordinator,
+            entry.data[CONF_BOOKING_REFERENCE],
+            description,
+        )
+        for description in SENSOR_TYPES
+        if description.key in booking
+    )
 
 
 class Jet2BinarySensor(CoordinatorEntity[Jet2Coordinator], BinarySensorEntity):
-    """Define an Jet2 sensor."""
+    """Represent a boolean value from a Jet2 booking."""
+
+    _attr_has_entity_name = True
 
     def __init__(
         self,
         coordinator: Jet2Coordinator,
-        name: str,
+        booking_reference: str,
         description: BinarySensorEntityDescription,
     ) -> None:
-        """Initialize."""
+        """Initialize the binary sensor."""
         super().__init__(coordinator)
-        self.success = bool(coordinator.data.get("success"))
+        self.entity_description = description
+        self._attr_unique_id = (
+            f"{DOMAIN}-{booking_reference}-{description.key}-binary".lower()
+        )
+        booking = coordinator.data["data"]
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, booking_reference)},
+            manufacturer="Jet2",
+            model=booking.get("holidayType"),
+            name=booking_reference.upper(),
+            configuration_url="https://github.com/jampez77/Jet2/",
+        )
+        self._update_from_coordinator()
 
-        if self.success:
-            self.data = coordinator.data.get("data")
-            self._attr_device_info = DeviceInfo(
-                identifiers={(DOMAIN, f"{name}")},
-                manufacturer="Jet2",
-                model=self.data.get("holidayType"),
-                name=name.upper(),
-                configuration_url="https://github.com/jampez77/Jet2/",
-            )
-            self._attr_unique_id = f"{DOMAIN}-{name}-{description.key}-binary".lower()
-            self.entity_id = f"binary_sensor.{DOMAIN}_{name}_{description.key}".lower()
-            self.attrs: dict[str, Any] = {}
-            self.entity_description = description
-            self._attr_is_on = None
-
-    def update_from_coordinator(self):
-        """Update sensor state and attributes from coordinator data."""
-        if self.success:
-            value: dict | str | bool = self.data.get(self.entity_description.key, None)
-
-            if (
-                isinstance(value, dict)
-                and self.entity_description.key == "checkInStatus"
-            ):
-                value = value["checkInAllowed"]
-
-            self._attr_is_on = bool(value)
-
-            if isinstance(value, (dict, list)):
-                for index, attribute in enumerate(value):
-                    if isinstance(attribute, (dict, list)):
-                        for attr in attribute:
-                            self.attrs[str(attr) + str(index)] = attribute[attr]
-                    else:
-                        self.attrs[attribute] = value[attribute]
+    def _update_from_coordinator(self) -> None:
+        """Update the state and attributes from coordinator data."""
+        value: Any = self.coordinator.data["data"].get(self.entity_description.key)
+        if isinstance(value, dict):
+            self._attr_extra_state_attributes = dict(value)
+            value = value.get("checkInAllowed")
+        else:
+            self._attr_extra_state_attributes = None
+        self._attr_is_on = value if isinstance(value, bool) else bool(value)
 
     @callback
+    @override
     def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self.update_from_coordinator()
-        self.async_write_ha_state()
-
-    async def async_added_to_hass(self) -> None:
-        """Handle adding to Home Assistant."""
-        await super().async_added_to_hass()
-        await self.async_update()
-
-    async def async_remove(self) -> None:
-        """Handle the removal of the entity."""
-        # If you have any specific cleanup logic, add it here
-        if self.hass is not None:
-            await super().async_remove()
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return self.success
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the binary sensor is on."""
-        return self._attr_is_on
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Define entity attributes."""
-        return self.attrs
+        """Handle updated booking data."""
+        self._update_from_coordinator()
+        super()._handle_coordinator_update()

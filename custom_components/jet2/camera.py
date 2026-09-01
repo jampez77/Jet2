@@ -1,119 +1,107 @@
-"""Camera sensor for Jet2."""
+"""Camera platform for the Jet2 integration."""
 
-import requests
+from typing import override
+from urllib.parse import urljoin
+
+from aiohttp import ClientError, ClientTimeout
 
 from homeassistant.components.camera import Camera, CameraEntityDescription
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_BOOKING_REFERENCE, DOMAIN
-from .coordinator import Jet2Coordinator
+from .coordinator import Jet2ConfigEntry, Jet2Coordinator
 
 SENSOR_DESCRIPTION = CameraEntityDescription(
     key="accommodationImages",
-    name="Accomodation Images",
+    name="Accommodation Images",
     icon="mdi:camera-burst",
 )
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    entry: Jet2ConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up sensors from a config entry created in the integrations UI."""
-    config = hass.data[DOMAIN][entry.entry_id]
-
-    session = async_get_clientsession(hass)
-
-    coordinator = Jet2Coordinator(hass, session, config)
-
-    await coordinator.async_refresh()
-
-    name = config[CONF_BOOKING_REFERENCE]
-
-    sensors = [Jet2CameraSensor(coordinator, name, SENSOR_DESCRIPTION)]
-    async_add_entities(sensors, update_before_add=True)
+    """Set up the Jet2 accommodation camera."""
+    async_add_entities(
+        [
+            Jet2CameraSensor(
+                entry.runtime_data,
+                entry.data[CONF_BOOKING_REFERENCE],
+                SENSOR_DESCRIPTION,
+            )
+        ]
+    )
 
 
 class Jet2CameraSensor(CoordinatorEntity[Jet2Coordinator], Camera):
-    """Representation of a Camera entity."""
+    """Rotate through accommodation images from a Jet2 booking."""
+
+    _attr_has_entity_name = True
 
     def __init__(
         self,
         coordinator: Jet2Coordinator,
-        name: str,
+        booking_reference: str,
         description: CameraEntityDescription,
     ) -> None:
-        """Initialize."""
-        super().__init__(coordinator)
-        Camera.__init__(self)  # Initialize the Camera base class
+        """Initialize the camera."""
+        CoordinatorEntity.__init__(self, coordinator)
+        Camera.__init__(self)
+        self.entity_description = description
+        self._attr_unique_id = (
+            f"{DOMAIN}-{booking_reference}-{description.key}-camera".lower()
+        )
+        self._current_index = 0
 
-        self.success = bool(coordinator.data.get("success"))
-        self._name = "Accommodation Images"
-        self._image_urls = None
-
-        if self.success:
-            self.data = coordinator.data.get("data")
-
-            if "hotel" in self.data:
-                self._name = self.data["hotel"]["name"]
-            elif "resort" in self.data:
-                self._name = self.data["resort"]
-            elif "area" in self.data:
-                self._name = self.data["area"]
-            elif "region" in self.data:
-                self._name = self.data["region"]
-
-            self.entity_description = description
-            self._current_index = 0
-            self._image_urls = self.data["accommodationImages"]
-
-            # Setup unique ID and entity ID
-            self._attr_unique_id = f"{DOMAIN}-{name}-{description.key}-camera".lower()
-            self.entity_id = f"camera.{DOMAIN}_{name}_{description.key}".lower()
-
-            # Set up device info
-            self._attr_device_info = DeviceInfo(
-                identifiers={(DOMAIN, f"{name}")},
-                manufacturer="Jet2",
-                model=self.data.get("holidayType"),
-                name=name.upper(),
-                configuration_url="https://github.com/jampez77/Jet2/",
-            )
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return bool(self.success and len(self._image_urls) > 0)
-
-    @property
-    def name(self) -> str:
-        """Return the name of the camera."""
-        return self._name
-
-    @property
-    def is_streaming(self) -> bool:
-        """Return True if the camera is streaming."""
-        return bool(self.success and len(self._image_urls) > 0)
-
-    def camera_image(self, width: int = 0, height: int = 0) -> bytes:
-        """Return the image to serve for the camera entity."""
-        if not self.success or self._image_urls is None:
-            return None
-
-        # Get the current image URL
-        image_url = (
-            "https://www.jet2holidays.com" + self._image_urls[self._current_index]
+        booking = coordinator.data["data"]
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, booking_reference)},
+            manufacturer="Jet2",
+            model=booking.get("holidayType"),
+            name=booking_reference.upper(),
+            configuration_url="https://github.com/jampez77/Jet2/",
         )
 
-        # Rotate to the next image
-        self._current_index = (self._current_index + 1) % len(self._image_urls)
+    @property
+    @override
+    def available(self) -> bool:
+        """Return whether an accommodation image is available."""
+        return super().available and bool(self._image_urls)
 
-        # Fetch and return the image content
-        response = requests.get(image_url, timeout=10)
-        return response.content
+    @property
+    def _image_urls(self) -> list[str]:
+        """Return the current image URLs."""
+        images = self.coordinator.data["data"].get("accommodationImages")
+        if not isinstance(images, list):
+            return []
+        return [image for image in images if isinstance(image, str)]
+
+    @override
+    async def async_camera_image(
+        self, width: int | None = None, height: int | None = None
+    ) -> bytes | None:
+        """Return the next accommodation image."""
+        image_urls = self._image_urls
+        if not image_urls:
+            return None
+
+        image_path = image_urls[self._current_index % len(image_urls)]
+        self._current_index = (self._current_index + 1) % len(image_urls)
+        image_url = urljoin("https://www.jet2holidays.com/", image_path)
+
+        try:
+            async with self.coordinator.session.get(
+                image_url, timeout=ClientTimeout(total=10)
+            ) as response:
+                response.raise_for_status()
+                return await response.read()
+        except (ClientError, TimeoutError) as err:
+            raise HomeAssistantError(
+                "Unable to fetch the Jet2 accommodation image"
+            ) from err

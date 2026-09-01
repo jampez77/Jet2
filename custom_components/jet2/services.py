@@ -4,12 +4,12 @@ import functools
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_ENTITY_ID
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.service import async_register_admin_service
 
 from .const import (
     CONF_ADD_BOOKING,
@@ -21,7 +21,6 @@ from .const import (
     CONF_SURNAME,
     DOMAIN,
 )
-from .coordinator import Jet2Coordinator
 
 # Define the schema for your service
 SERVICE_ADD_BOOKING_SCHEMA = vol.Schema(
@@ -39,28 +38,6 @@ SERVICE_REMOVE_BOOKING_SCHEMA = vol.Schema(
         vol.Required(CONF_BOOKING_REFERENCE): cv.string,
     }
 )
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Jet2 from a config entry."""
-
-    # Create a coordinator or other necessary components
-    session = async_get_clientsession(hass)
-    coordinator = Jet2Coordinator(hass, session, entry.data)
-
-    # Store the coordinator so it can be accessed by other parts of the integration
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = coordinator
-
-    # Setup the service (if it hasn't already been set up globally)
-    async_setup_services(hass)
-
-    await coordinator.async_refresh()
-
-    if coordinator.last_exception is not None:
-        return False
-
-    return True
 
 
 def async_cleanup_services(hass: HomeAssistant) -> None:
@@ -86,7 +63,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
     for name, method, schema in services:
         if hass.services.has_service(DOMAIN, name):
             continue
-        hass.services.async_register(DOMAIN, name, method, schema=schema)
+        async_register_admin_service(hass, DOMAIN, name, method, schema=schema)
 
 
 async def add_booking(hass: HomeAssistant, call: ServiceCall) -> None:
@@ -95,7 +72,7 @@ async def add_booking(hass: HomeAssistant, call: ServiceCall) -> None:
     date_of_birth = call.data.get(CONF_DATE_OF_BIRTH)
     surname = call.data.get(CONF_SURNAME)
     create_calendar = call.data.get(CONF_CREATE_CALENDAR)
-    calendars = call.data.get(CONF_ENTITY_ID)
+    calendars = call.data.get(CONF_ENTITY_ID, []) or []
 
     calendar_entities = {}
 
@@ -121,13 +98,14 @@ async def add_booking(hass: HomeAssistant, call: ServiceCall) -> None:
             CONF_BOOKING_REFERENCE: booking_reference,
             CONF_DATE_OF_BIRTH: date_of_birth,
             CONF_SURNAME: surname,
-            CONF_CALENDARS: calendar_entities,
+            CONF_CALENDARS: list(calendar_entities),
         },
     )
 
-    # Notify user
-    hass.components.persistent_notification.create(
-        f"Added Jet2 booking {booking_reference}", title="Jet2 Booking Added"
+    persistent_notification.async_create(
+        hass,
+        f"Added Jet2 booking {booking_reference}",
+        title="Jet2 Booking Added",
     )
 
 
@@ -145,5 +123,7 @@ async def remove_booking(hass: HomeAssistant, call: ServiceCall) -> None:
         None,
     )
 
-    # Remove the config entry
+    if entry is None:
+        raise HomeAssistantError(f"Jet2 booking {booking_reference} was not found.")
+
     await hass.config_entries.async_remove(entry.entry_id)

@@ -1,8 +1,18 @@
-"""Jet2 Coordinator."""
+"""Data coordinator for the Jet2 integration."""
 
+from collections.abc import Mapping
 from datetime import timedelta
 import logging
+from typing import Any, override
 
+from aiohttp import ClientError, ClientSession, ClientTimeout
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from . import Jet2ConfigEntry
+
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONTENT_TYPE_JSON
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
@@ -14,87 +24,100 @@ from .const import (
     CONF_DATE_OF_BIRTH,
     CONF_DATEOFBIRTH,
     CONF_SURNAME,
+    DOMAIN,
     HOST,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
+type Jet2Response = dict[str, Any]
 
-class Jet2Coordinator(DataUpdateCoordinator):
-    """Data coordinator."""
 
-    def __init__(self, hass: HomeAssistant, session, data: dict) -> None:
-        """Initialize coordinator."""
+async def async_fetch_booking(
+    session: ClientSession, data: Mapping[str, Any]
+) -> Jet2Response:
+    """Fetch and validate a booking from Jet2."""
+    try:
+        async with session.post(
+            HOST,
+            json={
+                CONF_BOOKINGREFERENCE: data[CONF_BOOKING_REFERENCE],
+                CONF_DATEOFBIRTH: data[CONF_DATE_OF_BIRTH],
+                CONF_SURNAME: data[CONF_SURNAME],
+            },
+            headers={
+                "Accept": CONTENT_TYPE_JSON,
+                "Content-Type": CONTENT_TYPE_JSON,
+            },
+            timeout=ClientTimeout(total=30),
+        ) as response:
+            if response.status in (401, 403):
+                raise InvalidAuth("The Jet2 booking details were rejected")
+            if response.status == 429:
+                raise APIRateLimitExceeded("The Jet2 API rate limit was exceeded")
 
+            response.raise_for_status()
+            body = await response.json()
+    except Jet2Error:
+        raise
+    except (ClientError, TimeoutError, ValueError) as err:
+        raise Jet2ConnectionError("Unable to retrieve the Jet2 booking") from err
+
+    if not isinstance(body, dict):
+        raise Jet2ConnectionError("Jet2 returned an unexpected response")
+
+    if body.get("success") is not True or not isinstance(body.get("data"), dict):
+        raise InvalidAuth("The Jet2 booking details were rejected")
+
+    return body
+
+
+class Jet2Coordinator(DataUpdateCoordinator[Jet2Response]):
+    """Coordinate booking updates from Jet2."""
+
+    config_entry: Jet2ConfigEntry
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry: Jet2ConfigEntry,
+        session: ClientSession,
+    ) -> None:
+        """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
-            # Name of the data. For logging purposes.
-            name="Jet2",
-            # Polling interval. Will only be polled if there are subscribers.
-            update_interval=timedelta(minutes=5),
+            config_entry=config_entry,
+            name=f"{DOMAIN}_{config_entry.entry_id}",
+            update_interval=timedelta(days=1),
         )
         self.session = session
-        self.booking_reference = data[CONF_BOOKING_REFERENCE]
-        self.date_of_birth = data[CONF_DATE_OF_BIRTH]
-        self.surname = data[CONF_SURNAME]
 
-    async def _async_update_data(self):
-        """Fetch data from API endpoint."""
-
-        def handle_status_code(status_code):
-            if status_code == 401:
-                raise InvalidAuth("Invalid authentication credentials")
-            if status_code == 429:
-                raise APIRatelimitExceeded("API rate limit exceeded.")
-
-        def validate_response(body):
-            if not isinstance(body, dict):
-                raise TypeError("Unexpected response format")
-
+    @override
+    async def _async_update_data(self) -> Jet2Response:
+        """Fetch the latest booking data."""
         try:
-            resp = await self.session.request(
-                method="POST",
-                url=HOST,
-                json={
-                    CONF_BOOKINGREFERENCE: self.booking_reference,
-                    CONF_DATEOFBIRTH: self.date_of_birth,
-                    CONF_SURNAME: self.surname,
-                },
-                headers={"Content-Type": CONTENT_TYPE_JSON},
-            )
-
-            handle_status_code(resp.status)
-
-            body = await resp.json()
-
-            validate_response(body)
-
+            return await async_fetch_booking(self.session, self.config_entry.data)
         except InvalidAuth as err:
-            raise ConfigEntryAuthFailed from err
+            raise ConfigEntryAuthFailed(str(err)) from err
         except Jet2Error as err:
             raise UpdateFailed(str(err)) from err
-        except ValueError as err:
-            _LOGGER.error("Value error occurred: %s", err)
-            raise UpdateFailed(f"Unexpected response: {err}") from err
-        except Exception as err:
-            _LOGGER.error("Unexpected exception: %s", err)
-            raise UnknownError from err
-        else:
-            return body
+
+
+type Jet2ConfigEntry = ConfigEntry[Jet2Coordinator]
 
 
 class Jet2Error(HomeAssistantError):
-    """Base error."""
+    """Base Jet2 error."""
 
 
 class InvalidAuth(Jet2Error):
-    """Raised when invalid authentication credentials are provided."""
+    """Raised when booking authentication is rejected."""
 
 
-class APIRatelimitExceeded(Jet2Error):
+class APIRateLimitExceeded(Jet2Error):
     """Raised when the API rate limit is exceeded."""
 
 
-class UnknownError(Jet2Error):
-    """Raised when an unknown error occurs."""
+class Jet2ConnectionError(Jet2Error):
+    """Raised when Jet2 cannot be reached or returns invalid data."""
